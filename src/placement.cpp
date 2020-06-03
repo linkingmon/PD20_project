@@ -26,6 +26,8 @@ void Placement::parseInput(fstream &inFile)
     _rightBoundary = stoi(str_list[4]);
     _bottomBoundary = stoi(str_list[1]);
     _topBoundary = stoi(str_list[3]);
+    _boundary_width = _rightBoundary - _leftBoundary;
+    _boundary_height = _topBoundary - _bottomBoundary;
     // Layers
     str_list = readline2list(inFile);
     _numLayers = stoi(str_list[1]);

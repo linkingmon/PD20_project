@@ -11,6 +11,8 @@ using namespace std;
 
 class Placement
 {
+    friend class Placer;
+    friend class Router;
 public:
     // constructor and destructor
     Placement(fstream &inFile)
@@ -39,6 +41,8 @@ private:
     int _rightBoundary;
     int _bottomBoundary;
     int _topBoundary;
+    int _boundary_width = _placement->_rightBoundary - _placement->_leftBoundary;
+    int _boundary_height = _placement->_topBoundary - _placement->_bottomBoundary;
     // Layer charatersitics
     int _numLayers;
     vector<Layer*> layers; 
