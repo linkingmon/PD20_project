@@ -40,6 +40,7 @@ public:
     Pin(string name, int layer) : _name(name), _layer(layer){};
     ~Pin() {};
     void print() { cout << "(" << _name << "," << _layer << ")";};
+    void print_with_cell() { cout << "(" << _cellId << "/" << _name << "," << _layer << ")";};
     void setcellId(int cellid) {_cellId = cellid;};
 
 private:

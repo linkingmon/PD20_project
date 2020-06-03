@@ -34,3 +34,14 @@ vector<string> readline2list(istream& is)
     return str_list;
 } 
  
+vector<string> split(string s, string delimiter){
+    vector<string> str_list;
+    size_t pos = 0;
+    while ((pos = s.find(delimiter)) != std::string::npos){
+        string token = s.substr(0, pos);
+        str_list.push_back(token);
+        s.erase(0, pos + delimiter.length());
+    }
+    str_list.push_back(s);
+    return str_list;
+}

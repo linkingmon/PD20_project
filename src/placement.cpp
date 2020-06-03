@@ -89,7 +89,9 @@ void Placement::parseInput(fstream &inFile)
     _numCells = stoi(str_list[1]);
     for(int i = 0 ; i < _numCells ; ++i){
         str_list = readline2list(inFile);
-        _cellArray.push_back(new Cell(str_list[1], *masters[MasterName2Id[str_list[2]]], stoi(str_list[3]), stoi(str_list[4]), str_list[5] == "Movable", i));
+        string cell_name = str_list[1];
+        _cellArray.push_back(new Cell(cell_name, *masters[MasterName2Id[str_list[2]]], stoi(str_list[3]), stoi(str_list[4]), str_list[5] == "Movable", i));
+        _CellName2Id[cell_name] = i;
     }
     // Nets
     str_list = readline2list(inFile);
@@ -99,9 +101,13 @@ void Placement::parseInput(fstream &inFile)
         string net_name = str_list[1];
         int num_pin = stoi(str_list[2]);
         int min_layer = (str_list[3] == "NoCstr") ? -1 : LayerName2Id[str_list[3]];
+        Net * cur_net = new Net(net_name, num_pin, min_layer);
         for(int j = 0 ; j < num_pin ; ++j){
             str_list = readline2list(inFile);
+            str_list = split(str_list[1], "/");
+            cur_net->addPin(_cellArray[_CellName2Id[str_list[0]]]->getPin(str_list[1]));
         }
+        _netArray.push_back(cur_net);
     }
     // Routes
     str_list = readline2list(inFile);
@@ -128,6 +134,8 @@ void Placement::printSummary() const
     for(int i = 0 ; i < _numMasterCell ; ++i) masters[i]->print();
     cout << "* Num of Cells: " << _numCells << '\n';
     for(int i = 0 ; i < _numCells ; ++i) _cellArray[i]->print();
+    cout << "* Num of Cells: " << _numNets << '\n';
+    for(int i = 0 ; i < _numNets ; ++i) _netArray[i]->print();
     cout << "=================================================" << endl;
     cout << endl;
     return;

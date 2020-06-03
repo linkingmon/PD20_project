@@ -53,6 +53,7 @@ private:
     // cells
     int _numCells;
     vector<Cell*> _cellArray;
+    map<string, int> _CellName2Id;
     // nets
     int _numNets;
     vector<Net*> _netArray;

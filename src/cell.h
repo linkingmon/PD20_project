@@ -17,7 +17,7 @@ public:
     Master(string name, int numPin, int numBlockage) : _name(name), _numPin(numPin), _numBlockage(numBlockage) {};
     ~Master() {};
 
-    void add_pin(string name, int layer) {_pinArray.push_back(new Pin(name, layer));};
+    void add_pin(string name, int layer) {_PinName2Id[name] = _pinArray.size(); _pinArray.push_back(new Pin(name, layer));};
     void add_blockage(int layer, int demand) {_BlockLayers.push_back(layer); _BlockDemand.push_back(demand);};
     void add_adj_demand(int extraId, int layer, int demand) {_adjDemand.push_back(ExtraDemand(extraId, layer, demand));};
     void add_same_demand(int extraId, int layer, int demand) {_sameDemand.push_back(ExtraDemand(extraId, layer, demand));};
@@ -42,6 +42,7 @@ public:
         for(int i = 0, end_i = _pinArray.size() ; i < end_i ; ++i)
             _pinArray[i]->setcellId(cell_id);
     }
+    Pin* getPin(string pin_name) {return _pinArray[_PinName2Id[pin_name]];}
 
 private:
     string _name;
@@ -52,6 +53,7 @@ private:
     vector<int> _BlockDemand;
     vector<ExtraDemand> _adjDemand;
     vector<ExtraDemand> _sameDemand;
+    map<string, int> _PinName2Id;
 };
 
 class Cell
@@ -65,6 +67,7 @@ public:
     void print() {
         cout << "Cell name: " << _cellname << " at (" << _x << "," << _y << ")" << " with MS " << _type._name << " and " << (_isMovable ? "Movable" : "Fixed") << '\n';
     }
+    Pin* getPin(string pin_name) {return _type.getPin(pin_name);};
 private:
     string _cellname;
     int _x;
