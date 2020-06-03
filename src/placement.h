@@ -44,11 +44,11 @@ private:
     vector<Layer*> layers; 
     map<string, int> LayerName2Id;
     // supply related
-    int _numNonDefault;
+    int _numNonDefault;                 // non default supply grid
     vector<NonDefault*> nondefault;
     // master cells
     int _numMasterCell;
-    vector<Master*> masters;
+    vector<Master*> masters;          
     map<string, int> MasterName2Id;
     // cells
     int _numCells;

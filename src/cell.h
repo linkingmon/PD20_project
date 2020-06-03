@@ -45,15 +45,15 @@ public:
     Pin* getPin(string pin_name) {return _pinArray[_PinName2Id[pin_name]];}
 
 private:
-    string _name;
-    int _numPin;
-    int _numBlockage;
-    vector<Pin*> _pinArray;
-    vector<int> _BlockLayers;
-    vector<int> _BlockDemand;
-    vector<ExtraDemand> _adjDemand;
-    vector<ExtraDemand> _sameDemand;
-    map<string, int> _PinName2Id;
+    string _name;                       // Name of the master cell (MC)
+    int _numPin;                        // Number of pin of this MC
+    int _numBlockage;                   // Number of blockage of this MC
+    vector<Pin*> _pinArray;             // Pin array of the MC
+    vector<int> _BlockLayers;           // the layer num of each block
+    vector<int> _BlockDemand;           // the demand of each block
+    vector<ExtraDemand> _adjDemand;     // adjacencyH grid extra demand
+    vector<ExtraDemand> _sameDemand;    // same grid extra demand
+    map<string, int> _PinName2Id;   
 };
 
 class Cell
@@ -69,11 +69,11 @@ public:
     }
     Pin* getPin(string pin_name) {return _type.getPin(pin_name);};
 private:
-    string _cellname;
-    int _x;
-    int _y;
-    bool _isMovable;
-    Master _type;
+    string _cellname;       // cell name
+    int _x;                 // cell coordinate x
+    int _y;                 // cell coordinate y
+    bool _isMovable;        // whether the cell is movable
+    Master _type;           // the master cell type of this cell
 };
 
 #endif  // CELL_H

@@ -15,9 +15,9 @@ public:
 
     void print() {cout << "Layer Name " << setw(4) << _name << ", is " << (_isH ? 'H' : 'V') << ", with default supply " << _supply << '\n';};
 private:
-    string _name;
-    bool _isH;
-    int _supply;
+    string _name;       // layer name
+    bool _isH;          // is horizontal
+    int _supply;        // default supply of the layer
 };
 
 class NonDefault
@@ -28,8 +28,8 @@ public:
 
     void print() {cout << "(" << _x << ',' << _y << ',' << _z << "), with supply offset  " << _offset << '\n';};
 private:
-    int _x, _y, _z;
-    int _offset;
+    int _x, _y, _z;     // coordinate of non default supply grid
+    int _offset;        // non default supply offset
 
 };
 
@@ -44,9 +44,9 @@ public:
     void setcellId(int cellid) {_cellId = cellid;};
 
 private:
-    int _cellId;
-    int _layer;
-    string _name;
+    int _cellId;        // the cell id in the cellArray
+    int _layer;         // the layer num of the pin
+    string _name;       // pin name
 
 };
 
@@ -54,9 +54,9 @@ class ExtraDemand{
 public:
     ExtraDemand(int extraId, int layer, int demand) : _extraId(extraId), _layer(layer), _demand(demand) {};
     ~ExtraDemand() {};
-    int _extraId;
-    int _layer;
-    int _demand;    
+    int _extraId;       // its counterpart
+    int _layer;         // extra demand layer
+    int _demand;        // extra demand value
 };
 
 
