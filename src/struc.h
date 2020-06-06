@@ -42,6 +42,8 @@ public:
     void print() { cout << "(" << _name << "," << _layer << ")";};
     void print_with_cell() { cout << "(" << _cellId << "/" << _name << "," << _layer << ")";};
     void setcellId(int cellid) {_cellId = cellid;};
+    
+    int getcellId() {return _cellId;};
 
 private:
     int _cellId;        // the cell id in the cellArray

@@ -68,6 +68,9 @@ public:
         cout << "Cell name: " << _cellname << " at (" << _x << "," << _y << ")" << " with MS " << _type._name << " and " << (_isMovable ? "Movable" : "Fixed") << '\n';
     }
     Pin* getPin(string pin_name) {return _type.getPin(pin_name);};
+
+    int getx() {return _x;};
+    int gety() {return _y;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x
