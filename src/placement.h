@@ -24,6 +24,9 @@ public:
         clear();
     }
 
+    // access method
+    Cell* getCell(size_t i) { return _cellArray[i];} 
+
     // modify method
     void parseInput(fstream &inFile);
 
@@ -62,6 +65,7 @@ private:
     int _numNets;
     vector<Net*> _netArray;
 
+    
     // Clean up Placement
     void clear();
 };
