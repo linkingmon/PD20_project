@@ -44,6 +44,8 @@ public:
     void setcellId(int cellid) {_cellId = cellid;};
     
     int getcellId() {return _cellId;};
+    int get_layer() {return _layer;};
+    string get_name() {return _name;};
 
 private:
     int _cellId;        // the cell id in the cellArray

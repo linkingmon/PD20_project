@@ -90,7 +90,7 @@ void Placement::parseInput(fstream &inFile)
     for(int i = 0 ; i < _numCells ; ++i){
         str_list = readline2list(inFile);
         string cell_name = str_list[1];
-        _cellArray.push_back(new Cell(cell_name, *masters[MasterName2Id[str_list[2]]], stoi(str_list[3]), stoi(str_list[4]), str_list[5] == "Movable", i));
+        _cellArray.push_back(new Cell(cell_name, masters[MasterName2Id[str_list[2]]], stoi(str_list[3]), stoi(str_list[4]), str_list[5] == "Movable", i));
         _CellName2Id[cell_name] = i;
     }
     // Nets

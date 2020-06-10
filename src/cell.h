@@ -43,6 +43,12 @@ public:
             _pinArray[i]->setcellId(cell_id);
     }
     Pin* getPin(string pin_name) {return _pinArray[_PinName2Id[pin_name]];}
+    Master* copy() {
+        Master* cpy = new Master(*this); 
+        for(int i = 0, end_i = _pinArray.size() ; i < end_i ; ++i)
+            cpy->_pinArray[i] = new Pin(_pinArray[i]->get_name(), _pinArray[i]->get_layer());
+        return cpy;
+    }
 
 private:
     string _name;                       // Name of the master cell (MC)
@@ -60,14 +66,15 @@ class Cell
 {
 public:
     // Constructor and destructor
-    Cell(string cellname, Master type, int y, int x, bool isM, int cell_id) : _cellname(cellname), _type(type), _x(x), _y(y), _isMovable(isM){
-        type.set_pin_id(cell_id);
+    Cell(string cellname, Master* type, int y, int x, bool isM, int cell_id) : _cellname(cellname), _x(x), _y(y), _isMovable(isM){
+        _type = type->copy();
+        _type->set_pin_id(cell_id);
     }
     ~Cell() { }
     void print() {
-        cout << "Cell name: " << _cellname << " at (" << _x << "," << _y << ")" << " with MS " << _type._name << " and " << (_isMovable ? "Movable" : "Fixed") << '\n';
+        cout << "Cell name: " << _cellname << " at (" << _x << "," << _y << ")" << " with MS " << _type->_name << " and " << (_isMovable ? "Movable" : "Fixed") << '\n';
     }
-    Pin* getPin(string pin_name) {return _type.getPin(pin_name);};
+    Pin* getPin(string pin_name) {return _type->getPin(pin_name);};
 
     int getx() {return _x;};
     int gety() {return _y;};
@@ -76,7 +83,7 @@ private:
     int _x;                 // cell coordinate x
     int _y;                 // cell coordinate y
     bool _isMovable;        // whether the cell is movable
-    Master _type;           // the master cell type of this cell
+    Master* _type;           // the master cell type of this cell
 };
 
 #endif  // CELL_H
