@@ -8,14 +8,16 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
 
 void Placer::place(){
     cout << "Placing ..." << endl;
-    int iteration = 40;
-    int dw = 1;
-    for(int i = 0 ; i < iteration ; ++i){
-        bd_congestion_init(dw);
-        for(int j = 0, end_j = _placement->_numNets ; j < end_j ; ++j)
-            cal_bd_congestion(_placement->_netArray[j]);
+    // int iteration = 40;
+    // int dw = 1;
+    // for(int i = 0 ; i < iteration ; ++i){
+    //     bd_congestion_init(dw);
+    //     for(int j = 0, end_j = _placement->_numNets ; j < end_j ; ++j)
+    //         cal_bd_congestion(_placement->_netArray[j]);
 
-    }
+    // }
+    for(int i = 0 ; i < _placement->_numNets ; ++i)
+        cout << "Net " << i << " HPWL: " << cal_net_cost(_placement->_netArray[i]) << endl;
 }
 
 void Placer::cal_congestion_force(){
