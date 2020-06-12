@@ -78,6 +78,9 @@ public:
 
     int getx() {return _x;};
     int gety() {return _y;};
+
+    int setx(int x) {_x = x;};
+    int sety(int y) {_y = y;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x

@@ -26,8 +26,8 @@ void Placement::parseInput(fstream &inFile)
     _rightBoundary = stoi(str_list[4]);
     _bottomBoundary = stoi(str_list[1]);
     _topBoundary = stoi(str_list[3]);
-    _boundary_width = _rightBoundary - _leftBoundary;
-    _boundary_height = _topBoundary - _bottomBoundary;
+    _boundary_width = _rightBoundary - _leftBoundary + 1;
+    _boundary_height = _topBoundary - _bottomBoundary + 1;
     // Layers
     str_list = readline2list(inFile);
     _numLayers = stoi(str_list[1]);
@@ -161,17 +161,8 @@ void Placement::reportNet() const
 
 void Placement::reportCell() const
 {
-    // cout << "Number of cells: " << _cellNum << endl;
-    // for (size_t i = 0, end_i = _cellArray.size(); i < end_i; ++i)
-    // {
-    //     cout << setw(8) << _cellArray[i]->getName() << ": ";
-    //     vector<int> netList = _cellArray[i]->getNetList();
-    //     for (size_t j = 0, end_j = netList.size(); j < end_j; ++j)
-    //     {
-    //         cout << setw(8) << _netArray[netList[j]]->getName() << " ";
-    //     }
-    //     cout << endl;
-    // }
+    cout << "* Num of Cells: " << _numCells << '\n';
+    for(int i = 0 ; i < _numCells ; ++i) _cellArray[i]->print();
     return;
 }
 
