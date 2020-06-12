@@ -26,8 +26,8 @@ void Placement::parseInput(fstream &inFile)
     _rightBoundary = stoi(str_list[4]);
     _bottomBoundary = stoi(str_list[1]);
     _topBoundary = stoi(str_list[3]);
-    _boundary_width = _rightBoundary - _leftBoundary;
-    _boundary_height = _topBoundary - _bottomBoundary;
+    _boundary_width = _rightBoundary - _leftBoundary + 1;   // need determine whether +1 or not
+    _boundary_height = _topBoundary - _bottomBoundary + 1;  // need determine whether +1 or not
     // Layers
     str_list = readline2list(inFile);
     _numLayers = stoi(str_list[1]);
@@ -136,7 +136,7 @@ void Placement::printSummary() const
     for(int i = 0 ; i < _numMasterCell ; ++i) masters[i]->print();
     cout << "* Num of Cells: " << _numCells << '\n';
     for(int i = 0 ; i < _numCells ; ++i) _cellArray[i]->print();
-    cout << "* Num of Cells: " << _numNets << '\n';
+    cout << "* Num of Nets: " << _numNets << '\n';
     for(int i = 0 ; i < _numNets ; ++i) _netArray[i]->print();
     cout << "=================================================" << endl;
     cout << endl;
