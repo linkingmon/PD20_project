@@ -25,5 +25,5 @@ void Router::two_pin_net_Z_routing(Pin*a , Pin*b){
 }
 
 void Router::H_route(size_t x , size_t y1, size_t y2 , size_t z ){
-    
+       
 }
