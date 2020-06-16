@@ -107,7 +107,9 @@ void Placement::parseInput(fstream &inFile)
         for(int j = 0 ; j < num_pin ; ++j){
             str_list = readline2list(inFile);
             str_list = split(str_list[1], "/");
-            cur_net->addPin(_cellArray[_CellName2Id[str_list[0]]]->getPin(str_list[1]));
+            Pin* cur_pin = _cellArray[_CellName2Id[str_list[0]]]->getPin(str_list[1]);
+            cur_net->addPin(cur_pin);
+            cur_pin->addNetId(i);
         }
         _netArray.push_back(cur_net);
     }

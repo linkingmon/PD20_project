@@ -1,6 +1,7 @@
 #include "placer.h"
 #include <cmath>
 #include "utils.h"
+#include <cstdlib>
 #define PRINT_MODE
 
 enum {
@@ -10,9 +11,11 @@ enum {
 
 Placer::Placer(Placement * placement)  : _placement(placement) {
     srand(0);
+    _iteration_cnt = 1;
     _supply = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
     _demand = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
     _congestion = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
+    _netlength = vector<int>(_placement->_numNets, -1);
     _best_solution.reserve(_placement->_numCells);
 }
 
@@ -28,58 +31,56 @@ void Placer::place(){
     int k = 10;
     double P = 0.95;
     N = _placement->_numCells * k;
-    int c = 10000; // a small number for stage 2 in fast SA
+    int c = 100 ; // a small number for stage 2 in fast SA
     // random floorplanning for calculate avg cost
     double avg_cost = random_place(N);
-    double T1 = avg_cost / log(1 / P); // set initial temperature
-    double terminate_temperature = 1e-3;
+    T1 = avg_cost / log(1 / P); // set initial temperature
+    double terminate_temperature = 1e-2;
     int num_stage_1 = 2; // 1 num for 7 iteration
-    int num_stage_2 = num_stage_1 + 10;
+    int num_stage_2 = num_stage_1 + _placement->_numCells;
     // stage I : aims to put into the outline (minimize area)
     print_start("SA Floorplanning - Stage I");
+    cur_temperature = T1;
+    set_range();
 #ifdef PRINT_MODE
-        cout << "Temp " << fixed << setprecision(5) << T1 << " Iteration " << 1 << " has [Cost / Congetstion / Wire]: " 
-            << _best_cost << " " << _best_congestion << " " << _best_wire << '\n';
+    print_temp();
 #endif
-    SA_iteration(T1);
+    SA_iteration();
     avg_cost = 0;
     print_end();
     // stage II : aims to put into the outline (minimize area)
     print_start("Fast-SA Floorplanning - Stage II");
     recover_best_solution();
-    for (int i = num_stage_1; i < num_stage_2; ++i)
+    for (_iteration_cnt = num_stage_1; _iteration_cnt < num_stage_2; ++_iteration_cnt)
     {
-        double cur_temperature = T1 * avg_cost / i / c;
+        cur_temperature = T1 * avg_cost / _iteration_cnt / c;
+        set_range();
 #ifdef PRINT_MODE
-        cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << i << " has [Cost / Congetstion / Wire]: " 
-            << _best_cost << " " << _best_congestion << " " << _best_wire << '\n';
+    print_temp();
 #endif
-        avg_cost = SA_iteration(cur_temperature);
+        avg_cost = SA_iteration();
     }
     print_end();
     // stage III : classical SA
     print_start("Fast-SA Floorplanning - Stage III");
     recover_best_solution();
-    for (int i = num_stage_2;; ++i)
+    for (_iteration_cnt = num_stage_2;; ++_iteration_cnt)
     {
-        double cur_temperature = T1 * avg_cost / i;
+        cur_temperature = T1 * avg_cost / _iteration_cnt * 100 / c;
+        set_range();
 #ifdef PRINT_MODE
-        cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << i << " has [Cost / Congetstion / Wire]: " 
-            << _best_cost << " " << _best_congestion << " " << _best_wire << '\n';
+    print_temp();
 #endif
-        avg_cost = SA_iteration(cur_temperature);
-        if (cur_temperature < terminate_temperature || (double(_reject_num) / double(_move_num) > 0.95))
-        {
-            _iteration_cnt = i;
+        avg_cost = SA_iteration();
+        if (cur_temperature < terminate_temperature || (double(_reject_num) / double(_move_num) > 0.97))
             break;
-        }
     }
     print_end();
     recover_best_solution();
     _placement->reportCell();
 }
 
-double Placer::SA_iteration(double &cur_temperature)
+double Placer::SA_iteration()
 {
     // local parameters
     double prev_cost, cur_cost;
@@ -168,18 +169,17 @@ int Placer::cal_net_cost(Net* cur_net){
         if(max_z < cur_pin->get_layer()) max_z = cur_pin->get_layer();
         if(min_z > cur_pin->get_layer()) min_z = cur_pin->get_layer();
     }
-    return (max_x - min_x) + (max_y - min_y) + (max_z - min_z);
+    return (max_x - min_x) + (max_y - min_y);
+    // return (max_x - min_x) + (max_y - min_y) + (max_z - min_z);
 }
 
-void Placer::keep_best_cost(double &cost, double &congestion, double &wire)
-{
+void Placer::keep_best_cost(double &cost, double &congestion, double &wire){
     // record best cost
     _best_cost = cost;
     _best_wire = wire;
     _best_congestion = congestion;
     return;
 }
-
 
 void Placer::keep_best_solution(){
     _best_solution.clear();
@@ -195,20 +195,34 @@ void Placer::recover_best_solution(){
     }
 }
 
-
 void Placer::perturb(){
-    _perturb_type = rand() % 2;
+    _perturb_type = rand_01() < 1 ? SWAP : MOVE;
     _perturb_val1 = rand() % (_placement->_numCells);
     _perturb_val2 = rand() % (_placement->_numCells);
 
     _temp_x = _placement->_cellArray[_perturb_val1]->getx();
     _temp_y = _placement->_cellArray[_perturb_val1]->gety();
     switch(_perturb_type){
-        case MOVE:
+        case MOVE:{
+            int cur_x = _placement->_cellArray[_perturb_val1]->getx();
+            cur_x = cur_x + rand() % x_range - x_range / 2;
+            cur_x = cur_x < _placement->_leftBoundary ? _placement->_leftBoundary : cur_x;
+            cur_x = cur_x > _placement->_rightBoundary ? _placement->_rightBoundary : cur_x;
+
+            int cur_y = _placement->_cellArray[_perturb_val1]->gety();
+            cur_y = cur_y + rand() % y_range - y_range / 2;
+            cur_y = cur_y < _placement->_bottomBoundary ? _placement->_bottomBoundary : cur_y;
+            cur_y = cur_y > _placement->_topBoundary ? _placement->_topBoundary : cur_y;
+
             _placement->_cellArray[_perturb_val1]->setx(rand() % _placement->_boundary_width + _placement->_leftBoundary);
-            _placement->_cellArray[_perturb_val1]->sety(rand() % _placement->_boundary_height + _placement->_rightBoundary);
+            _placement->_cellArray[_perturb_val1]->sety(rand() % _placement->_boundary_height + _placement->_rightBoundary);}
             break;
         case SWAP:
+            vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
+
             _placement->_cellArray[_perturb_val1]->setx(_placement->_cellArray[_perturb_val2]->getx());
             _placement->_cellArray[_perturb_val1]->sety(_placement->_cellArray[_perturb_val2]->gety());
             _placement->_cellArray[_perturb_val2]->setx(_temp_x);
@@ -315,6 +329,8 @@ void Placer::calculate_congestion_cost(double& congestion){
 
 void Placer::calculate_wire_length_cost(double& wire){
     wire = 0;
-    for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i)  
-        wire += cal_net_cost(_placement->_netArray[i]);
+    for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
+        if(_netlength[i] == -1) {int wire_len = cal_net_cost(_placement->_netArray[i]); wire += wire_len; _netlength[i] = wire_len;}
+        else wire += _netlength[i];
+    }
 }

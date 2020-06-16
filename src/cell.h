@@ -49,6 +49,7 @@ public:
             cpy->_pinArray[i] = new Pin(_pinArray[i]->get_name(), _pinArray[i]->get_layer());
         return cpy;
     }
+    vector<Pin*>& get_pinArray(){ return _pinArray;}
 
 private:
     string _name;                       // Name of the master cell (MC)
@@ -81,6 +82,7 @@ public:
 
     int setx(int x) {_x = x;};
     int sety(int y) {_y = y;};
+    Master*& get_master() {return _type;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x

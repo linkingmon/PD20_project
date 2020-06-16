@@ -46,6 +46,8 @@ public:
     int getcellId() {return _cellId;};
     int get_layer() {return _layer;};
     string get_name() {return _name;};
+    void addNetId(int Id) {_netId = Id;}
+    int getNetId() {return _netId;}
 
 private:
     int _cellId;        // the cell id in the cellArray
@@ -53,7 +55,7 @@ private:
     int _row;
     int _col;           //
     string _name;       // pin name
-
+    int _netId;
 };
 
 class ExtraDemand{

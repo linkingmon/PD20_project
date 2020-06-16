@@ -43,14 +43,24 @@ private:
     void recover_best_solution();
 
     // SA related
+    double T1;
+    double cur_temperature;
+    int x_range;
+    int y_range;
     int _step_cnt;
     int _iteration_cnt;
     int _reject_num;
     int _move_num;
     int _uphill_num;
-    double SA_iteration(double &cur_temperature);
+    double SA_iteration();
     void perturb();
     void deperturb();
+    void set_range() {
+        // recover_best_solution();
+        // if(_iteration_cnt % 5 == 0) recover_best_solution();
+        x_range = _placement->_boundary_width / (_iteration_cnt / 3 + 1); x_range = x_range < 2 ? 2 : x_range;
+        y_range = _placement->_boundary_height / (_iteration_cnt / 3 + 1); y_range = y_range < 2 ? 2 : y_range;
+    };
 
     // initial SA related
     int N;
@@ -71,6 +81,7 @@ private:
     void calculate_wire_length_cost(double& wire);
     double calculate_total_cost(double& congestion, double& wire);
     double calculate_total_cost();
+    vector<int> _netlength;
 
     // SA partial recovery
     int _perturb_type;
@@ -80,6 +91,9 @@ private:
     int _temp_y;
 
     // Clean up Placer
+    void print_temp(){
+        cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << _iteration_cnt << " has [Cost / Congetstion / Wire / Range]: " 
+            << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ")" << endl;};
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
 };
