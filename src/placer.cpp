@@ -20,6 +20,7 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
 }
 
 void Placer::place(){
+    set_range();
     double wire;
     // keep the initial placement
     _best_cost = calculate_total_cost(_best_congestion, _best_wire);
@@ -31,11 +32,11 @@ void Placer::place(){
     int k = 10;
     double P = 0.95;
     N = _placement->_numCells * k;
-    int c = 100 ; // a small number for stage 2 in fast SA
+    int c = 10000 ; // a small number for stage 2 in fast SA
     // random floorplanning for calculate avg cost
     double avg_cost = random_place(N);
     T1 = avg_cost / log(1 / P); // set initial temperature
-    double terminate_temperature = 1e-2;
+    double terminate_temperature = 1e-3;
     int num_stage_1 = 2; // 1 num for 7 iteration
     int num_stage_2 = num_stage_1 + _placement->_numCells;
     // stage I : aims to put into the outline (minimize area)
@@ -185,7 +186,6 @@ void Placer::keep_best_solution(){
     _best_solution.clear();
     for(int i = 0, end_i = _placement->_numCells ; i < end_i ; ++i)  
         _best_solution.push_back(*(_placement->_cellArray[i]));
-    
 }
 
 void Placer::recover_best_solution(){
@@ -193,10 +193,11 @@ void Placer::recover_best_solution(){
         delete _placement->_cellArray[i];
         _placement->_cellArray[i] = new Cell(_best_solution[i]);
     }
+    _netlength = vector<int>(_placement->_numNets, -1);
 }
 
 void Placer::perturb(){
-    _perturb_type = rand_01() < 1 ? SWAP : MOVE;
+    _perturb_type = rand_01() < 0.8 ? MOVE : SWAP;
     _perturb_val1 = rand() % (_placement->_numCells);
     _perturb_val2 = rand() % (_placement->_numCells);
 
@@ -204,6 +205,10 @@ void Placer::perturb(){
     _temp_y = _placement->_cellArray[_perturb_val1]->gety();
     switch(_perturb_type){
         case MOVE:{
+            // for incremental
+            vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+
             int cur_x = _placement->_cellArray[_perturb_val1]->getx();
             cur_x = cur_x + rand() % x_range - x_range / 2;
             cur_x = cur_x < _placement->_leftBoundary ? _placement->_leftBoundary : cur_x;
@@ -214,10 +219,13 @@ void Placer::perturb(){
             cur_y = cur_y < _placement->_bottomBoundary ? _placement->_bottomBoundary : cur_y;
             cur_y = cur_y > _placement->_topBoundary ? _placement->_topBoundary : cur_y;
 
-            _placement->_cellArray[_perturb_val1]->setx(rand() % _placement->_boundary_width + _placement->_leftBoundary);
-            _placement->_cellArray[_perturb_val1]->sety(rand() % _placement->_boundary_height + _placement->_rightBoundary);}
+            _placement->_cellArray[_perturb_val1]->setx(cur_x);
+            _placement->_cellArray[_perturb_val1]->sety(cur_y);
+
+            }
             break;
         case SWAP:
+            // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
             vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
@@ -332,5 +340,6 @@ void Placer::calculate_wire_length_cost(double& wire){
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
         if(_netlength[i] == -1) {int wire_len = cal_net_cost(_placement->_netArray[i]); wire += wire_len; _netlength[i] = wire_len;}
         else wire += _netlength[i];
+        // wire += cal_net_cost(_placement->_netArray[i]);
     }
 }
