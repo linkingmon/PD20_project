@@ -5,14 +5,19 @@
 #include <string>
 #include <iostream>
 #include <cstdlib>
+// #include "router.h"
+
 using namespace std;
 
 class Layer
 {
+    // friend class Router;
 public:
     Layer(string name, bool isH, int supply) : _name(name), _isH(isH), _supply(supply) {};
     ~Layer() {};
-
+    // access function
+    int get_supply()    {return _supply;}  
+    bool isH()          {return _isH;   }
     void print() {cout << "Layer Name " << setw(4) << _name << ", is " << (_isH ? 'H' : 'V') << ", with default supply " << _supply << '\n';};
 private:
     string _name;       // layer name
@@ -22,6 +27,7 @@ private:
 
 class NonDefault
 {
+    friend class Router;
 public:
     NonDefault(int x, int y, int z, int offset) : _x(x), _y(y), _z(z), _offset(offset) {};
     ~NonDefault() {};

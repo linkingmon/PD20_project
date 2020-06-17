@@ -78,6 +78,8 @@ public:
 
     int getx() {return _x;};
     int gety() {return _y;};
+    int get_norm_x( int n_factor) { return _x - n_factor;} // get normalize x
+    int get_norm_y( int n_factor) { return _y - n_factor;} // get normalize y
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x

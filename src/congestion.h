@@ -3,25 +3,61 @@
 
 #include <iostream>
 
+
+// describe congestion on grid
 class Congestion{
 
 public:
-    Congestion(size_t x, size_t y, size_t z)
+    Congestion(size_t x, size_t y, size_t z , size_t default_supply = 0)
     :Row(x) , Col(y) , Layer(z){ 
-        cong_map.resize( x * y * z );
+        // cong_map.resize( x * y * z );
+        cong_map_3D = vector<vector<vector<double>>> ( z , vector<vector<double>>(y , vector<double>(default_supply,x)) );
     }
 
     double& operator() (size_t x , size_t y, size_t z ){
-        return cong_map.at(x + y * Row + z * Row * Col );
+        // return cong_map.at(x + y * Row + z * Row * Col );
+        return cong_map_3D[z][y][x];
     }
+    // add congestion map with one layer 
+    void add_congestion_map( vector<vector<double>> one_layer_cong  ) {
+        cong_map_3D.push_back( one_layer_cong );
+    }
+
+    void print_congestion(){
+        cout<<endl;
+        cout<<"====================================="<<endl;
+        cout<<"congestion grid"<<endl;
+        for(size_t i = 0 ; i < Layer ; i++){
+            cout<<"layer : "<<i<<endl;
+            // int z = 0;
+            cout<<setw(5)<<"";
+            for(size_t k = 0 ; k < Col ; k++){
+                cout<<setw(4)<<"Col"<<k;
+            }
+            cout<<endl;
+            for(size_t j = 0 ; j < Row ; j++){
+                cout<<"Row"<<j<<" ";
+                for(size_t k = 0; k < Col ; k++){
+                    // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
+                    cout<<setw(5)<<cong_map_3D[i][k][j];
+                }
+                cout<<endl;
+            }
+            cout<<endl;
+        }
+        cout<<"====================================="<<endl;
+        cout<<endl;
+    }   
 private: 
     vector<double> cong_map;
+    vector<vector<vector<double>>> cong_map_3D;
     size_t Row;
     size_t Col;
     size_t Layer;
 };
 
-class Congestion_Row{
+//describe congestion of Row edge ( Horizontal edge )
+class Congestion_Row {
 public:
     Congestion_Row() {}
     Congestion_Row(size_t x , size_t y , size_t z)
@@ -60,10 +96,13 @@ public:
         cout<<"congestion Row"<<endl;
         for(size_t i = 0 ; i < Layer ; i++){
             cout<<"layer : "<<i<<endl;
+            int z = 0;
             for(size_t j = 0 ; j < Row ; j++){
                 cout<<"Row"<<j<<" ";
                 for(size_t k = 0; k < Col ; k++){
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
+                    cong_map_3D[j][k][i] = z;
+                    z++;
                     cout<<setw(5)<<cong_map_3D[j][k][i];
                 }
                 cout<<endl;
@@ -81,6 +120,8 @@ private:
     size_t Layer;
 };
 
+
+//describe congestion on Column edge ( vertical edge )
 class Congestion_Col{
 public:
     Congestion_Col() {}
@@ -88,6 +129,11 @@ public:
     :Row(x-1), Col(y), Layer(z){
         // cong_map.resize( (x-1) * y * z );
         cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y , vector<double>(z)) );
+    }
+
+    double& operator() (size_t x , size_t y, size_t z ){
+        // return cong_map.at(x*Col + y + z * Row * Col );
+        return cong_map_3D[x][y][z];
     }
 
     double& block_to_edge_p(size_t x, size_t y , size_t z){     //positive direction in Col
@@ -114,6 +160,7 @@ public:
         cout<<"====================================="<<endl;
         cout<<"congestion Col"<<endl;
         for(size_t i = 0 ; i < Layer ; i++){
+            size_t z = 0;
             cout<<"layer : "<<i<<endl<<endl;
             for(size_t k = 0 ; k < Col ; k++){
                 cout<<setw(4)<<"Col"<<k;
@@ -122,6 +169,8 @@ public:
             for(size_t j = 0 ; j < Row ; j++){
                 for(size_t k = 0; k < Col ; k++){
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
+                    cong_map_3D[j][k][i] = z;
+                    z++;
                     cout<<setw(5)<<cong_map_3D[j][k][i];
                 }
                 cout<<endl;
