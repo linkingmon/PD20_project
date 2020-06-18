@@ -30,8 +30,6 @@ private:
     vector<vector<int> > _congestion;
 
     double cal_bd_congestion(Net* cur_net);
-    void bd_congestion_init(double dw);
-
 
     // retrace solution
     vector<Cell> _best_solution;
@@ -58,8 +56,10 @@ private:
     void set_range() {
         // recover_best_solution();
         // if(_iteration_cnt % 5 == 0) recover_best_solution();
-        x_range = _placement->_boundary_width / (_iteration_cnt / 3 + 1); x_range = x_range < 2 ? 2 : x_range;
-        y_range = _placement->_boundary_height / (_iteration_cnt / 3 + 1); y_range = y_range < 2 ? 2 : y_range;
+        // x_range = _placement->_boundary_width / (_iteration_cnt / 3 + 1); x_range = x_range < 2 ? 2 : x_range;
+        // y_range = _placement->_boundary_height / (_iteration_cnt / 3 + 1); y_range = y_range < 2 ? 2 : y_range;
+        x_range = _placement->_boundary_width;
+        y_range = _placement->_boundary_height;
     };
 
     // initial SA related

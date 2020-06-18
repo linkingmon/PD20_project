@@ -37,8 +37,9 @@ void Placer::place(){
     double avg_cost = random_place(N);
     T1 = avg_cost / log(1 / P); // set initial temperature
     double terminate_temperature = 1e-3;
-    int num_stage_1 = 2; // 1 num for 7 iteration
+    int num_stage_1 = 2; 
     int num_stage_2 = num_stage_1 + _placement->_numCells;
+
     // stage I : aims to put into the outline (minimize area)
     print_start("SA Floorplanning - Stage I");
     cur_temperature = T1;
@@ -47,11 +48,12 @@ void Placer::place(){
     print_temp();
 #endif
     SA_iteration();
-    avg_cost = 0;
     print_end();
+
     // stage II : aims to put into the outline (minimize area)
     print_start("Fast-SA Floorplanning - Stage II");
     recover_best_solution();
+    avg_cost = 1e-3;
     for (_iteration_cnt = num_stage_1; _iteration_cnt < num_stage_2; ++_iteration_cnt)
     {
         cur_temperature = T1 * avg_cost / _iteration_cnt / c;
@@ -62,6 +64,7 @@ void Placer::place(){
         avg_cost = SA_iteration();
     }
     print_end();
+
     // stage III : classical SA
     print_start("Fast-SA Floorplanning - Stage III");
     recover_best_solution();
@@ -77,6 +80,7 @@ void Placer::place(){
             break;
     }
     print_end();
+
     recover_best_solution();
     _placement->reportCell();
 }
@@ -103,19 +107,26 @@ double Placer::SA_iteration()
         double congestion;
         _beta = 1 - _feasible_count / _feasible_chain.size();
         cur_cost = calculate_total_cost(congestion, wire);
-        cout << "Current [Cost / Congetstion / Wire]: " << cur_cost << " " << congestion << " " << wire << '\r';
         double d_cost = cur_cost - prev_cost;
         avg_cost += d_cost;
         float p = 1 / (exp(d_cost / cur_temperature)); // probapility for uphill move
         p = p > 1 ? 1 : p;
+        // cout << "Current [Cost / Congetstion / Wire]: " << cur_cost << " " << congestion << " " << wire << " " << cur_cost << "　" << prev_cost << " " << p << '\n';
+        cout << "Current [Cost / Congetstion / Wire]: " << cur_cost << " " << congestion << " " << wire << '\r';
+        // if(_iteration_cnt == 2 && _move_num == 10) exit(-1);
         if (d_cost > 0 && rand_01() > p) // reject
         {
+            // cout << "Reject" << endl;
             ++_reject_num;
             deperturb();
-            set_feasible(false);
+            double wire_debug;
+            calculate_wire_length_cost(wire_debug);
+            // cout << "Wire after deperturb: " << wire_debug << endl;
+            // set_feasible(false);
         }
         else
         {
+            // cout << "Take" << endl;
             if (d_cost > 0)
                 ++_uphill_num;
             prev_cost = cur_cost;
@@ -124,7 +135,7 @@ double Placer::SA_iteration()
                 keep_best_cost(cur_cost, congestion, wire);
                 keep_best_solution();
             }
-            set_feasible(true);
+            // set_feasible(true);
         }
     } while (_move_num < 2 * N && _uphill_num < N);
     return avg_cost / double(_move_num);
@@ -142,14 +153,6 @@ void Placer::set_feasible(bool feasible)
     // if (feasible)
     //     ++_feasible_count;
     // return;
-}
-
-void Placer::bd_congestion_init(double dw){
-    for(int i = 0, end_i = _placement->_boundary_width ; i < end_i ; ++i){
-        for(int j = 0, end_j = _placement->_boundary_height ; j < end_j ; ++j){
-            _congestion[i][j] = _supply[i][j] - _demand[i][j] * dw;
-        }
-    }
 }
 
 int Placer::cal_net_cost(Net* cur_net){
@@ -203,6 +206,12 @@ void Placer::perturb(){
 
     _temp_x = _placement->_cellArray[_perturb_val1]->getx();
     _temp_y = _placement->_cellArray[_perturb_val1]->gety();
+
+    // cout << "TAKE CELL: " << _perturb_val1 << " " << _perturb_val2 << '\n';
+    // cout << "TAKE TYPE: " << _perturb_type << endl;
+    // cout << "CELL 1 COORD: " << _temp_x << " " << _temp_y << '\n';
+    // cout << "CELL 2 COORD: " << _placement->_cellArray[_perturb_val2]->getx() << " " << _placement->_cellArray[_perturb_val2]->gety() << '\n';
+
     switch(_perturb_type){
         case MOVE:{
             // for incremental
@@ -224,7 +233,7 @@ void Placer::perturb(){
 
             }
             break;
-        case SWAP:
+        case SWAP:{
             // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
@@ -235,21 +244,40 @@ void Placer::perturb(){
             _placement->_cellArray[_perturb_val1]->sety(_placement->_cellArray[_perturb_val2]->gety());
             _placement->_cellArray[_perturb_val2]->setx(_temp_x);
             _placement->_cellArray[_perturb_val2]->sety(_temp_y);
+            }
             break;
     }
 }
 
 void Placer::deperturb(){
+
+    // cout << "D TAKE CELL: " << _perturb_val1 << " " << _perturb_val2 << '\n';
+    // cout << "D TAKE TYPE: " << _perturb_type << endl;
+    // cout << "D CELL 1 COORD: " << _placement->_cellArray[_perturb_val1]->getx() << " " << _placement->_cellArray[_perturb_val1]->getx() << '\n';
+    // cout << "D CELL 2 COORD: " << _placement->_cellArray[_perturb_val2]->getx() << " " << _placement->_cellArray[_perturb_val2]->gety() << '\n';
+
     switch(_perturb_type){
-        case MOVE:
+        case MOVE:{
+            // for incremental
+            vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+
             _placement->_cellArray[_perturb_val1]->setx(_temp_x);
             _placement->_cellArray[_perturb_val1]->sety(_temp_y);
+            }
             break;
-        case SWAP:
+        case SWAP:{
+            // for incremental
+            vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
+
             _placement->_cellArray[_perturb_val2]->setx(_placement->_cellArray[_perturb_val1]->getx());
             _placement->_cellArray[_perturb_val2]->sety(_placement->_cellArray[_perturb_val1]->gety());
             _placement->_cellArray[_perturb_val1]->setx(_temp_x);
             _placement->_cellArray[_perturb_val1]->sety(_temp_y);
+            }
             break;
     }
 }
