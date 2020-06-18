@@ -7,6 +7,7 @@
 #include "cell.h"
 #include "net.h"
 #include "placement.h"
+#include "mst.h"
 using namespace std;
 
 class Placer
@@ -82,6 +83,7 @@ private:
     double calculate_total_cost(double& congestion, double& wire);
     double calculate_total_cost();
     vector<int> _netlength;
+    vector<MST*> _msts;
 
     // SA partial recovery
     int _perturb_type;
@@ -89,6 +91,9 @@ private:
     int _perturb_val2;
     int _temp_x;
     int _temp_y;
+
+    // log lookup table
+    vector<double> _log_table;
 
     // Clean up Placer
     void print_temp(){

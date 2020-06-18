@@ -17,6 +17,16 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     _congestion = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
     _netlength = vector<int>(_placement->_numNets, -1);
     _best_solution.reserve(_placement->_numCells);
+    // initialize log lookup table
+    _log_table.reserve(_placement->_boundary_height + _placement->_boundary_width);
+    _log_table.push_back(0); // dummy log(0)
+    for(int i = 1, end_i = _placement->_boundary_height + _placement->_boundary_width ; i < end_i ; ++i)
+        _log_table.push_back(log(i));
+    // initialize MST per Net (quadratic time) // but incremental is linear
+    _msts.reserve(_placement->_numNets);
+    for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
+        _msts.push_back(new MST(_placement->_netArray[i]->getPinArray(), _placement));
+    }
 }
 
 void Placer::place(){

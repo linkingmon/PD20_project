@@ -13,6 +13,8 @@ class Placement
 {
     friend class Placer;
     friend class Router;
+    friend class MST;
+    friend class PinCompare;
 public:
     // constructor and destructor
     Placement(fstream &inFile)
