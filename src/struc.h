@@ -55,11 +55,15 @@ public:
     void addNetId(int Id) {_netId = Id;}
     int getNetId() {return _netId;}
 
+    void set_deputy(Pin* deputy) {_deputy = deputy;}
+    Pin* get_deputy() {return _deputy;}
+
 private:
     int _cellId;        // the cell id in the cellArray
     int _layer;         // the layer num of the pin
     string _name;       // pin name
     int _netId;
+    Pin* _deputy;       // the deputy for Kruskals MST
 };
 
 class ExtraDemand{

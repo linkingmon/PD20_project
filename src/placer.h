@@ -30,10 +30,10 @@ private:
 
     void init_supply_map();
     void init_demand_map();
-    vector<vector<vector<int> > > _supply;
-    vector<vector<vector<int> > > _demand;
-
-    double cal_bd_congestion(Net* cur_net);
+    void init_mcell_list();
+    vector<vector<vector<double> > > _supply;
+    vector<vector<vector<double> > > _demand;
+    vector<vector<map<int, int> > > _mcell_list;
 
     // retrace solution
     vector<Cell> _best_solution;
@@ -106,6 +106,7 @@ private:
             << setprecision(10) << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ")" << endl;
         myusage.report(true, true);    
         };
+    void print_congestion();
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
 };

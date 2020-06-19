@@ -28,6 +28,7 @@ public:
 
     // access method
     Cell* getCell(size_t i) { return _cellArray[i];} 
+    
 
     // modify method
     void parseInput(fstream &inFile);
