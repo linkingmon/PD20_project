@@ -24,6 +24,7 @@ MST::MST(const vector<Pin*>& pin_ary, Placement* placement) : _color(0) {
     init_weight(pin_ary, placement);
     _numPins = pin_ary.size();
     _two_pin_nets.reserve(_numPins);
+    construct2pins();
 }
 
 void MST::init_direction(vector<Pin*> pin_ary, Placement* placement){
@@ -44,7 +45,7 @@ void MST::init_weight(const vector<Pin*>& pin_ary, Placement* placement){
         for(int j = i+1 ; j < end_i ; ++j){
             Cell* other_cell = placement->_cellArray[pin_ary[j]->getcellId()];
             EDGE cur_edge = pair<Pin*, Pin*>(minmax(pin_ary[i],pin_ary[j])); // order the edge by minmax
-            int cur_wire = abs(cur_cell->getx() - other_cell->getx()) + abs(cur_cell->gety() - other_cell->gety());
+            int cur_wire = abs(cur_cell->getx() - other_cell->getx()) + abs(cur_cell->gety() - other_cell->gety()) + abs(pin_ary[i]->get_layer() - pin_ary[j]->get_layer());
             // cerr << "W2E INSERT: " << cur_wire << " (" << cur_edge.first->getcellId() << "/" << cur_edge.first->get_name() 
             //     << "," << cur_edge.second->getcellId() << "/" << cur_edge.second->get_name() << ")" << endl;
             _weight2edge.insert(pair<int,EDGE>(cur_wire, cur_edge));
@@ -107,10 +108,10 @@ void MST::construct2pins(){
     multimap<int, EDGE>::iterator iter;
     // make_sets
     for(iter = _weight2edge.begin() ; iter != _weight2edge.end() ; ++iter){
-        if(find_set(iter->second.first) != find_set(iter->second.second)){ // find_set
-            // union_set
+        // if(find_set(iter->second.first) != find_set(iter->second.second)){ // find_set
+        //     // union_set
             _two_pin_nets.push_back(iter->second);
-        }
+        // }
     }
 }
 

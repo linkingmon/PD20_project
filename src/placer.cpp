@@ -12,9 +12,8 @@ enum {
 Placer::Placer(Placement * placement)  : _placement(placement) {
     srand(0);
     _iteration_cnt = 1;
-    _supply = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
-    _demand = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
-    _congestion = vector<vector<int> >(_placement->_boundary_width, vector<int>(_placement->_boundary_height));
+    _supply = vector<vector<vector<int> > >(_placement->_boundary_width, vector<vector<int> >(_placement->_boundary_height, vector<int>(_placement->_numLayers)));
+    _demand = vector<vector<vector<int> > >(_placement->_boundary_width, vector<vector<int> >(_placement->_boundary_height, vector<int>(_placement->_numLayers)));
     _netlength = vector<int>(_placement->_numNets, -1);
     _best_solution.reserve(_placement->_numCells);
     // initialize log lookup table
@@ -27,6 +26,9 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
         _msts.push_back(new MST(_placement->_netArray[i]->getPinArray(), _placement));
     }
+    // initialize the congection map
+    init_supply_map();
+    init_demand_map();
 }
 
 void Placer::place(){
@@ -184,7 +186,6 @@ int Placer::cal_net_cost(Net* cur_net){
         if(min_z > cur_pin->get_layer()) min_z = cur_pin->get_layer();
     }
     return (max_x - min_x) + (max_y - min_y);
-    // return (max_x - min_x) + (max_y - min_y) + (max_z - min_z);
 }
 
 void Placer::keep_best_cost(double &cost, double &congestion, double &wire){
@@ -386,14 +387,82 @@ double Placer::calculate_total_cost(double& congestion, double& wire){
 }
 
 void Placer::calculate_congestion_cost(double& congestion){
+    // cerr << "CAL CONGEST 1" << endl;
     congestion = 0;
+    for(int i = 0 ; i < _placement->_boundary_width ; ++i){
+        for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+            for(int k = 0 ; k < _placement->_numLayers ; ++k){
+                if(_demand[i][j][k] > _supply[i][j][k])
+                    congestion += _demand[i][j][k] - _supply[i][j][k];
+            }
+        }
+    }
+    // cerr << "CAL CONGEST 2" << endl;
 }
 
 void Placer::calculate_wire_length_cost(double& wire){
+    // cerr << "CAL WIRE 1" << endl;
     wire = 0;
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
-        if(_netlength[i] == -1) {int wire_len = cal_net_cost(_placement->_netArray[i]); wire += wire_len; _netlength[i] = wire_len;}
+        if(_netlength[i] == -1) {
+            int wire_len = 0;
+            wire_len = cal_net_cost(_placement->_netArray[i]); 
+            vector<EDGE> two_pin_net = _msts[i]->get2pinnets();
+            // cerr << "GET NET" << endl;
+            for(int j = 0, end_j = two_pin_net.size() ; j < end_j ; ++j){
+                Pin* p1 = two_pin_net[j].first;
+                Pin* p2 = two_pin_net[j].second;
+                Cell* c1 = _placement->_cellArray[p1->getcellId()];
+                Cell* c2 = _placement->_cellArray[p2->getcellId()];
+                // cerr << "RUN NET" << j << endl;
+                // cerr << p1->getcellId() << endl;
+                // cerr << p1->get_name() << endl;
+                // cerr << p2->getcellId() << endl;
+                // cerr << p2->get_name() << endl;
+                // cerr << "(" << p1->getcellId() << "/" << p1->get_name() << ") (" << p2->getcellId() << "/" << p2->get_name() << ")" << endl;
+                wire_len += abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety() + abs(p1->get_layer() - p2->get_layer()));
+            }
+            // exit(-1);
+            wire += wire_len; 
+            _netlength[i] = wire_len;
+        }
         else wire += _netlength[i];
         // wire += cal_net_cost(_placement->_netArray[i]);
     }
+    // cerr << "CAL WIRE 2" << endl;
+}
+
+void Placer::init_supply_map(){
+    // cerr << "INIT SUPPLY" << endl;
+    // default supply
+    for(int i = 0 ; i < _placement->_numLayers ; ++i){ // z
+        int cur_layer_supply = _placement->layers[i]->get_supply();
+        for(int j = 0 ; j < _placement->_boundary_width ; ++j){ // x
+            for(int k = 0 ; k < _placement->_boundary_height ; ++k){ // y
+                _supply[j][k][i] = cur_layer_supply;
+            }
+        }
+    }
+    // cerr << "INIT SUPPLY " << _placement->_numNonDefault << endl;
+    // non default supply
+    for(int i = 0; i < _placement->_numNonDefault ; ++i){
+        NonDefault* cur_grid = _placement->nondefault[i];
+        // cur_grid->print();
+        _supply[cur_grid->getx()-_placement->_leftBoundary][cur_grid->gety()-_placement->_bottomBoundary][cur_grid->getz()] = cur_grid->get_offset();
+    }
+    // cerr << "INIT SUPPLY DONE" << endl;
+    return;
+}
+
+void Placer::init_demand_map(){
+    // cerr << "INIT DEMAND" << endl;
+    for(int i = 0 ; i < _placement->_numLayers ; ++i){ // z
+        for(int j = 0 ; j < _placement->_boundary_width ; ++j){ // x
+            for(int k = 0 ; k < _placement->_boundary_height ; ++k){ // y
+                _demand[j][k][i] = 0;
+            }
+        }
+    }
+    // cerr << "INIT DEMAND DONE" << endl;
+    return;
 }

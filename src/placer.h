@@ -23,12 +23,11 @@ public:
 
 private:
     Placement * _placement;
-    // void cal_congestion_force();
-    // void cal_wirelen_force();
-    // void cal_extrademand_force();
-    vector<vector<int> > _supply;
-    vector<vector<int> > _demand;
-    vector<vector<int> > _congestion;
+
+    void init_supply_map();
+    void init_demand_map();
+    vector<vector<vector<int> > > _supply;
+    vector<vector<vector<int> > > _demand;
 
     double cal_bd_congestion(Net* cur_net);
 

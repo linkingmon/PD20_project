@@ -14,6 +14,7 @@ public:
     ~Layer() {};
 
     void print() {cout << "Layer Name " << setw(4) << _name << ", is " << (_isH ? 'H' : 'V') << ", with default supply " << _supply << '\n';};
+    int get_supply() {return _supply;};
 private:
     string _name;       // layer name
     bool _isH;          // is horizontal
@@ -27,6 +28,11 @@ public:
     ~NonDefault() {};
 
     void print() {cout << "(" << _x << ',' << _y << ',' << _z << "), with supply offset  " << _offset << '\n';};
+    
+    int getx() {return _x;};
+    int gety() {return _y;};
+    int getz() {return _z;};
+    int get_offset() {return _offset;};
 private:
     int _x, _y, _z;     // coordinate of non default supply grid
     int _offset;        // non default supply offset
@@ -52,8 +58,6 @@ public:
 private:
     int _cellId;        // the cell id in the cellArray
     int _layer;         // the layer num of the pin
-    int _row;
-    int _col;           //
     string _name;       // pin name
     int _netId;
 };
