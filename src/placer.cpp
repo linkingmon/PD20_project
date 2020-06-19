@@ -207,6 +207,10 @@ void Placer::recover_best_solution(){
         _placement->_cellArray[i] = new Cell(_best_solution[i]);
     }
     _netlength = vector<int>(_placement->_numNets, -1);
+    _msts.clear();
+    for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
+        _msts.push_back(new MST(_placement->_netArray[i]->getPinArray(), _placement));
+    }
 }
 
 void Placer::perturb(){
@@ -227,6 +231,8 @@ void Placer::perturb(){
             // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
 
             int cur_x = _placement->_cellArray[_perturb_val1]->getx();
             cur_x = cur_x + rand() % x_range - x_range / 2;
@@ -247,8 +253,12 @@ void Placer::perturb(){
             // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
             vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
+                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
 
             _placement->_cellArray[_perturb_val1]->setx(_placement->_cellArray[_perturb_val2]->getx());
             _placement->_cellArray[_perturb_val1]->sety(_placement->_cellArray[_perturb_val2]->gety());
@@ -271,6 +281,8 @@ void Placer::deperturb(){
             // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
 
             _placement->_cellArray[_perturb_val1]->setx(_temp_x);
             _placement->_cellArray[_perturb_val1]->sety(_temp_y);
@@ -280,8 +292,12 @@ void Placer::deperturb(){
             // for incremental
             vector<Pin*> pin_ary1 = _placement->_cellArray[_perturb_val1]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) _netlength[pin_ary1[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
             vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
+                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
 
             _placement->_cellArray[_perturb_val2]->setx(_placement->_cellArray[_perturb_val1]->getx());
             _placement->_cellArray[_perturb_val2]->sety(_placement->_cellArray[_perturb_val1]->gety());
