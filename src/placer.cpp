@@ -24,6 +24,8 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
         _msts.push_back(new MST(_placement->_netArray[i]->getPinArray(), _placement));
     }
+    // initialize mcell list
+    init_mcell_list();
     // initialize the congection map
     init_supply_map();
     init_demand_map();
@@ -38,6 +40,7 @@ void Placer::place(){
     calculate_norm_factor();
     recover_best_solution();
     _best_cost = calculate_total_cost(_best_congestion, _best_wire);
+    print_congestion();
 
     // specify prameters
     int k = 10;
@@ -94,6 +97,7 @@ void Placer::place(){
 
     recover_best_solution();
     _placement->reportCell();
+    print_congestion();
 }
 
 double Placer::SA_iteration()
@@ -212,6 +216,8 @@ void Placer::recover_best_solution(){
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
         _msts.push_back(new MST(_placement->_netArray[i]->getPinArray(), _placement));
     }
+    // initial mcell list
+    init_mcell_list();
     // re calculate the congestion demand map
     init_demand_map();
 }
@@ -474,12 +480,12 @@ void Placer::calculate_wire_length_cost(double& wire){
 void Placer::init_supply_map(){
     // cerr << "INIT SUPPLY" << endl;
     // default supply
-    _supply = vector<vector<vector<int> > >(_placement->_boundary_width, vector<vector<int> >(_placement->_boundary_height, vector<int>(_placement->_numLayers)));
+    _supply = vector<vector<vector<double> > >(_placement->_boundary_width, vector<vector<double> >(_placement->_boundary_height, vector<double>(_placement->_numLayers)));
     for(int i = 0 ; i < _placement->_numLayers ; ++i){ // z
         int cur_layer_supply = _placement->layers[i]->get_supply();
         for(int j = 0 ; j < _placement->_boundary_width ; ++j){ // x
             for(int k = 0 ; k < _placement->_boundary_height ; ++k){ // y
-                _supply[j][k][i] = cur_layer_supply;
+                _supply[j][k][i] = int(cur_layer_supply * 0.8);
             }
         }
     }
@@ -488,15 +494,15 @@ void Placer::init_supply_map(){
     for(int i = 0; i < _placement->_numNonDefault ; ++i){
         NonDefault* cur_grid = _placement->nondefault[i];
         // cur_grid->print();
-        _supply[cur_grid->getx()-_placement->_leftBoundary][cur_grid->gety()-_placement->_bottomBoundary][cur_grid->getz()] = cur_grid->get_offset();
+        _supply[cur_grid->getx()-_placement->_leftBoundary][cur_grid->gety()-_placement->_bottomBoundary][cur_grid->getz()] += cur_grid->get_offset();
     }
     // cerr << "INIT SUPPLY DONE" << endl;
     return;
 }
 
 void Placer::init_demand_map(){
-    // cerr << "INIT DEMAND" << endl;
-    _demand = vector<vector<vector<int> > >(_placement->_boundary_width, vector<vector<int> >(_placement->_boundary_height, vector<int>(_placement->_numLayers, 0)));
+    // wire demand
+    _demand = vector<vector<vector<double> > >(_placement->_boundary_width, vector<vector<double> >(_placement->_boundary_height, vector<double>(_placement->_numLayers, 0)));
     for(int i = 0 ; i < _placement->_numNets ; ++i){
         vector<Pin*> pin_ary = _placement->_netArray[i]->getPinArray();
         vector<EDGE> two_pin_net = _msts[i]->get2pinnets();
@@ -510,7 +516,53 @@ void Placer::init_demand_map(){
                         c2->getx()-_placement->_leftBoundary, c2->gety()-_placement->_bottomBoundary, p2->get_layer(), true);
         }
     }
-    // cerr << "INIT DEMAND DONE" << endl;
+    // blockage demand
+    for(int i = 0 ; i < _placement->_numCells ; ++i){
+        Master* mcell = _placement->_cellArray[i]->get_master();
+        for(int j = 0, end_j = mcell->get_blockage() ; j < end_j ; ++j){
+            // cerr << _placement->_cellArray[i]->getx()-_placement->_leftBoundary << " " << _placement->_cellArray[i]->gety()-_placement->_bottomBoundary << " "
+            //     << mcell->get_block_layer(j) << " " << mcell->get_block_demand(j) << endl;
+            _demand[_placement->_cellArray[i]->getx()-_placement->_leftBoundary][_placement->_cellArray[i]->gety()-_placement->_bottomBoundary][mcell->get_block_layer(j)] += mcell->get_block_demand(j);
+        }
+    }
+    // adjH and Same demand
+    for(int x = 0 ; x < _placement->_boundary_width ; ++x){
+        for(int y = 0 ; y < _placement->_boundary_height-1 ; ++y){
+            map<int, int> cur_map = _mcell_list[x][y];
+            map<int,int>::iterator iter, adj_iter, same_iter;
+            map<int,int> adj_map = _mcell_list[x][y+1];
+            for(iter = cur_map.begin() ; iter != cur_map.end() ; ++iter){
+                int MC1_id = iter->first;
+                int MC1_num = iter->second;
+                vector<ExtraDemand> adjH = _placement->masters[MC1_id]->get_adjHDemand();
+                vector<ExtraDemand> Same = _placement->masters[MC1_id]->get_sameDemand();
+                
+                for(size_t i = 0 ; i < adjH.size() ; i++){  // adjHDemand
+                    int MC2_id = adjH[i]._extraId;
+                    adj_iter = adj_map.find(MC2_id);
+                    if( adj_iter == adj_map.end() ) continue;
+                    int MC2_num = adj_iter->second;
+                    int layer = adjH[i]._layer;
+                    int demand = adjH[i]._demand;
+                    int MC_num = min(MC1_num, MC2_num);
+                    _demand[x][y][layer] += MC_num * demand;
+                    _demand[x][y+1][layer] += MC_num * demand;
+                }
+
+                for(size_t i = 0 ; i < Same.size() ; i++){  // sameDemand
+                    int MC2_id = Same[i]._extraId;
+                    if(MC2_id < MC1_id ) continue;
+                    same_iter = cur_map.find(MC2_id);
+                    if( same_iter == cur_map.end() ) continue;
+                    int MC2_num = same_iter->second;
+                    int layer = Same[i]._layer;
+                    int demand = Same[i]._demand;
+                    int MC_num = min(MC1_num, MC2_num);
+                    _demand[x][y][layer] += MC_num * demand;                
+                }
+            }
+        }
+    }
     return;
 }
 
@@ -541,8 +593,8 @@ void Placer::fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool in
                 double log_prob = (_log_table[x_dif1 + y_dif1 + z_dif1] - _log_table[x_dif1] - _log_table[y_dif1] - _log_table[z_dif1])
                                     + (_log_table[x_dif2 + y_dif2 + z_dif2] - _log_table[x_dif2] - _log_table[y_dif2] - _log_table[z_dif2])
                                     - (_log_table[x_dif + y_dif + z_dif] - _log_table[x_dif] - _log_table[y_dif] - _log_table[z_dif]);
-                if(inc) _supply[i][j][k] += exp(log_prob);
-                else _supply[i][j][k] -= exp(log_prob);
+                if(inc) _demand[i][j][k] += exp(log_prob);
+                else _demand[i][j][k] -= exp(log_prob);
                 // cerr << "FILL " << exp(log_prob) << endl;
             }
         }
@@ -561,5 +613,37 @@ void Placer::congestion_incremental_update(set<int> netIds, bool inc){
             fill_demand(c1->getx()-_placement->_leftBoundary, c1->gety()-_placement->_bottomBoundary, p1->get_layer(),
                     c2->getx()-_placement->_leftBoundary, c2->gety()-_placement->_bottomBoundary, p2->get_layer(), inc);
         }
+    }
+}
+
+void Placer::print_congestion(){
+    for(int k = 0 ; k < _placement->_numLayers ; ++k){
+        cout << "Layer " << k << " [Supply/Demand/Overflow]" << endl;
+        for(int i = 0 ; i < _placement->_boundary_width ; ++i){
+            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+                cout << setw(5) << setprecision(3) << _supply[i][j][k] << " ";
+            }
+            cout << " | ";
+            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+                cout << setw(5) << setprecision(3) << _demand[i][j][k] << " ";
+            }
+            cout << " | ";
+            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+                cout << setw(5) << setprecision(3) << _supply[i][j][k] - _demand[i][j][k] << " ";
+            }
+            cout << '\n';
+        }
+    }
+}
+
+void Placer::init_mcell_list(){
+    _mcell_list = vector<vector<map<int,int> > >(_placement->_boundary_width, vector<map<int,int> >(_placement->_boundary_height));
+    for(int i = 0, end_i = _placement->_numCells ; i < end_i ; ++i){
+        Cell* cur_cell = _placement->_cellArray[i];
+        map<int,int> cur_map = _mcell_list[cur_cell->getx() - _placement->_leftBoundary][cur_cell->gety() - _placement->_bottomBoundary];
+        if(cur_map.count(cur_cell->get_master()->getId()) == 0)
+            cur_map[cur_cell->get_master()->getId()] = 1;
+        else
+            cur_map[cur_cell->get_master()->getId()] += 1;
     }
 }

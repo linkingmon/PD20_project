@@ -33,7 +33,7 @@ public:
     MST(const vector<Pin*>& pin_ary, Placement* placement);
     void init_direction(vector<Pin*> pin_ary, Placement* placement);
     void init_weight(const vector<Pin*>& pin_ary, Placement* placement);
-    void construct2pins();
+    void construct2pins(const vector<Pin*>& pin_ary);
     vector<EDGE> get2pinnets();
     void update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement);
 private:
@@ -57,9 +57,9 @@ private:
     // color the original chosen edges, if the edges is chosen again, no update
 
     // make set related
-    void make_set();
+    void make_set(const vector<Pin*>& pin_ary);
     Pin* find_set(Pin*);
-    void unize();
+    void unize(Pin*, Pin*);
 };
 
 class PinCompare {

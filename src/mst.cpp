@@ -24,7 +24,7 @@ MST::MST(const vector<Pin*>& pin_ary, Placement* placement) : _color(0) {
     init_weight(pin_ary, placement);
     _numPins = pin_ary.size();
     _two_pin_nets.reserve(_numPins);
-    construct2pins();
+    construct2pins(pin_ary);
 }
 
 void MST::init_direction(vector<Pin*> pin_ary, Placement* placement){
@@ -98,31 +98,48 @@ void MST::update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement){
             _edge2weight.insert(pair<EDGE,int>(cur_edge, cur_wire));
         }
     }
-    construct2pins();
+    construct2pins(pin_ary);
     // cerr << "UPDATE DONE" << endl;
     return;
 }
 
-void MST::construct2pins(){
+void MST::construct2pins(const vector<Pin*>& pin_ary){
     _two_pin_nets.clear();
     multimap<int, EDGE>::iterator iter;
     // make_sets
+    make_set(pin_ary);
+    int cnt = 0;
     for(iter = _weight2edge.begin() ; iter != _weight2edge.end() ; ++iter){
-        // if(find_set(iter->second.first) != find_set(iter->second.second)){ // find_set
-        //     // union_set
+        if(find_set(iter->second.first) != find_set(iter->second.second)){ // find_set
+            // union_set
+            unize(iter->second.first, iter->second.second);
             _two_pin_nets.push_back(iter->second);
-        // }
+            ++cnt;
+            if(cnt == _numPins) break;
+        }
     }
 }
 
-void MST::make_set(){
-
+void MST::make_set(const vector<Pin*>& pin_ary){
+    for(int i = 0, end_i = pin_ary.size() ; i < end_i ; ++i){
+        pin_ary[i]->set_deputy(pin_ary[i]);
+    }
 }
 
 Pin* MST::find_set(Pin* pin){
-
+    vector<Pin*> pin_on_path;
+    Pin* next_pin = pin->get_deputy();
+    while(next_pin != pin){
+        pin_on_path.push_back(pin);
+        next_pin = pin;
+    }
+    for(int i = 0, end_i = pin_on_path.size() ; i < end_i ; ++i){
+        pin_on_path[i]->set_deputy(next_pin);
+    }
+    return next_pin;
 }
 
-void MST::unize(){
-
+void MST::unize(Pin* p1, Pin* p2){
+    p1->set_deputy(p2);
+    return;
 }

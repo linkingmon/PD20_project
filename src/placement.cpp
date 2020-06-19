@@ -52,7 +52,7 @@ void Placement::parseInput(fstream &inFile)
         int numPin = stoi(str_list[2]);
         int numBlockage = stoi(str_list[3]);
         string name = str_list[1];
-        Master* cur_ms = new Master(name, numPin, numBlockage);
+        Master* cur_ms = new Master(name, numPin, numBlockage , i );
         for(int j = 0 ; j < numPin ; ++j){
             str_list = readline2list(inFile);
             cur_ms->add_pin(str_list[1], LayerName2Id[str_list[2]]);
