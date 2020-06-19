@@ -89,7 +89,7 @@ void MST::update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement){
             }
             // insert the map
             Cell* other_cell = placement->_cellArray[pin_ary[i]->getcellId()];
-            int cur_wire = abs(cur_cell->getx() - other_cell->getx()) + abs(cur_cell->gety() - other_cell->gety());
+            int cur_wire = abs(cur_cell->getx() - other_cell->getx()) + abs(cur_cell->gety() - other_cell->gety()) + abs(pin->get_layer() - pin_ary[i]->get_layer());
             // cerr << "W2E INSERT: " << cur_wire << " (" << cur_edge.first->getcellId() << "/" << cur_edge.first->get_name() 
             //     << "," << cur_edge.second->getcellId() << "/" << cur_edge.second->get_name() << ")" << endl;
             // cerr << "E2W INSERT:" << " (" << cur_edge.first->getcellId() << "/" << cur_edge.first->get_name() << "," 

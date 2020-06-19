@@ -8,7 +8,11 @@
 #include "net.h"
 #include "placement.h"
 #include "mst.h"
+#include "myUsage.h"
+#include <set>
 using namespace std;
+
+extern MyUsage myusage;
 
 class Placer
 {
@@ -83,6 +87,8 @@ private:
     double calculate_total_cost();
     vector<int> _netlength;
     vector<MST*> _msts;
+    void fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool inc);
+    void congestion_incremental_update(set<int>, bool);
 
     // SA partial recovery
     int _perturb_type;
@@ -97,7 +103,9 @@ private:
     // Clean up Placer
     void print_temp(){
         cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << _iteration_cnt << " has [Cost / Congetstion / Wire / Range]: " 
-            << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ")" << endl;};
+            << setprecision(10) << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ")" << endl;
+        myusage.report(true, true);    
+        };
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
 };
