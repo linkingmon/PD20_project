@@ -48,7 +48,7 @@ void Placer::place(){
     N = _placement->_numCells * k;
     int c = 10000 ; // a small number for stage 2 in fast SA
     // random floorplanning for calculate avg cost
-    double avg_cost = random_place(N);
+    double avg_cost = random_place(4);exit(-1);
     T1 = avg_cost / log(1 / P); // set initial temperature
     double terminate_temperature = 1e-3;
     int num_stage_1 = 2; 
@@ -231,7 +231,7 @@ void Placer::perturb(){
     _temp_y = _placement->_cellArray[_perturb_val1]->gety();
 
     // cout << "TAKE CELL: " << _perturb_val1 << " " << _perturb_val2 << '\n';
-    // cout << "TAKE TYPE: " << _perturb_type << endl;
+    cout << ">>> TAKE TYPE: " << (_perturb_type == MOVE ? "MOVE" : "SWAP") << endl;
     // cout << "CELL 1 COORD: " << _temp_x << " " << _temp_y << '\n';
     // cout << "CELL 2 COORD: " << _placement->_cellArray[_perturb_val2]->getx() << " " << _placement->_cellArray[_perturb_val2]->gety() << '\n';
 
@@ -246,25 +246,32 @@ void Placer::perturb(){
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) modify_netIds.insert(pin_ary1[i]->getNetId());
             // remove net congestion before update 2 pin nets
             congestion_incremental_update(modify_netIds, false);
+            // cal x, y
+            int cur_x = _placement->_cellArray[_perturb_val1]->getx();
+            int cur_y = _placement->_cellArray[_perturb_val1]->gety();
+            // AdjH/Same demand
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], false);
+
+            // set moving range
+            cur_x = cur_x + rand() % x_range - x_range / 2;
+            cur_x = cur_x < _placement->_leftBoundary ? _placement->_leftBoundary : cur_x;
+            cur_x = cur_x > _placement->_rightBoundary ? _placement->_rightBoundary : cur_x;
+            cur_y = cur_y + rand() % y_range - y_range / 2;
+            cur_y = cur_y < _placement->_bottomBoundary ? _placement->_bottomBoundary : cur_y;
+            cur_y = cur_y > _placement->_topBoundary ? _placement->_topBoundary : cur_y;
+
+            cerr << "MOVE from (" <<  _placement->_cellArray[_perturb_val1]->getx() << "," << _placement->_cellArray[_perturb_val1]->gety() << ") to ("
+                << cur_x << "," << cur_y << ")" << endl;
+            _placement->_cellArray[_perturb_val1]->setx(cur_x);
+            _placement->_cellArray[_perturb_val1]->sety(cur_y);
+
             // MST inc.
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
                 _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
             // ass net congestion after update 2 pin nets
             congestion_incremental_update(modify_netIds, true);
-
-            // set moving range
-            int cur_x = _placement->_cellArray[_perturb_val1]->getx();
-            cur_x = cur_x + rand() % x_range - x_range / 2;
-            cur_x = cur_x < _placement->_leftBoundary ? _placement->_leftBoundary : cur_x;
-            cur_x = cur_x > _placement->_rightBoundary ? _placement->_rightBoundary : cur_x;
-
-            int cur_y = _placement->_cellArray[_perturb_val1]->gety();
-            cur_y = cur_y + rand() % y_range - y_range / 2;
-            cur_y = cur_y < _placement->_bottomBoundary ? _placement->_bottomBoundary : cur_y;
-            cur_y = cur_y > _placement->_topBoundary ? _placement->_topBoundary : cur_y;
-
-            _placement->_cellArray[_perturb_val1]->setx(cur_x);
-            _placement->_cellArray[_perturb_val1]->sety(cur_y);
+            // AdjH/Same demand
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], true);
 
             }
             break;
@@ -275,23 +282,29 @@ void Placer::perturb(){
             set<int> modify_netIds1;
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) modify_netIds1.insert(pin_ary1[i]->getNetId());
             congestion_incremental_update(modify_netIds1, false);
-            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
-                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
-            congestion_incremental_update(modify_netIds1, true);
 
             vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
             set<int> modify_netIds2;
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) modify_netIds2.insert(pin_ary2[i]->getNetId());
             congestion_incremental_update(modify_netIds2, false);
-            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
-                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
-            congestion_incremental_update(modify_netIds2, true);
+
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], false);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val2], false);
 
             _placement->_cellArray[_perturb_val1]->setx(_placement->_cellArray[_perturb_val2]->getx());
             _placement->_cellArray[_perturb_val1]->sety(_placement->_cellArray[_perturb_val2]->gety());
             _placement->_cellArray[_perturb_val2]->setx(_temp_x);
             _placement->_cellArray[_perturb_val2]->sety(_temp_y);
+            
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
+            congestion_incremental_update(modify_netIds1, true);
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
+                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
+            congestion_incremental_update(modify_netIds2, true);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], true);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val2], true);
             }
             break;
     }
@@ -304,6 +317,7 @@ void Placer::deperturb(){
     // cout << "D CELL 1 COORD: " << _placement->_cellArray[_perturb_val1]->getx() << " " << _placement->_cellArray[_perturb_val1]->getx() << '\n';
     // cout << "D CELL 2 COORD: " << _placement->_cellArray[_perturb_val2]->getx() << " " << _placement->_cellArray[_perturb_val2]->gety() << '\n';
 
+    cerr << "DEPERTURB" << endl;
     switch(_perturb_type){
         case MOVE:{
             // for incremental
@@ -312,12 +326,14 @@ void Placer::deperturb(){
             set<int> modify_netIds1;
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) modify_netIds1.insert(pin_ary1[i]->getNetId());
             congestion_incremental_update(modify_netIds1, false);
-            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
-                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
-            congestion_incremental_update(modify_netIds1, true);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], false);
 
             _placement->_cellArray[_perturb_val1]->setx(_temp_x);
             _placement->_cellArray[_perturb_val1]->sety(_temp_y);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], true);
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
+            congestion_incremental_update(modify_netIds1, true);
             }
             break;
         case SWAP:{
@@ -327,23 +343,30 @@ void Placer::deperturb(){
             set<int> modify_netIds1;
             for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) modify_netIds1.insert(pin_ary1[i]->getNetId());
             congestion_incremental_update(modify_netIds1, false);
-            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
-                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
-            congestion_incremental_update(modify_netIds1, true);
 
             vector<Pin*> pin_ary2 = _placement->_cellArray[_perturb_val2]->get_master()->get_pinArray();
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) _netlength[pin_ary2[i]->getNetId()] = -1;
             set<int> modify_netIds2;
             for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) modify_netIds2.insert(pin_ary2[i]->getNetId());
             congestion_incremental_update(modify_netIds2, false);
-            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
-                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
-            congestion_incremental_update(modify_netIds2, true);
+
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], false);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val2], false);
 
             _placement->_cellArray[_perturb_val2]->setx(_placement->_cellArray[_perturb_val1]->getx());
             _placement->_cellArray[_perturb_val2]->sety(_placement->_cellArray[_perturb_val1]->gety());
             _placement->_cellArray[_perturb_val1]->setx(_temp_x);
             _placement->_cellArray[_perturb_val1]->sety(_temp_y);
+
+            for(int i = 0, end_i = pin_ary1.size() ; i < end_i ; ++i) 
+                _msts[pin_ary1[i]->getNetId()]->update(pin_ary1[i], _placement->_netArray[pin_ary1[i]->getNetId()]->getPinArray(),_placement);
+            congestion_incremental_update(modify_netIds1, true);
+            for(int i = 0, end_i = pin_ary2.size() ; i < end_i ; ++i) 
+                _msts[pin_ary2[i]->getNetId()]->update(pin_ary2[i], _placement->_netArray[pin_ary2[i]->getNetId()]->getPinArray(),_placement);
+            congestion_incremental_update(modify_netIds2, true);
+
+            adjH_incremental_update(_placement->_cellArray[_perturb_val1], true);
+            adjH_incremental_update(_placement->_cellArray[_perturb_val2], true);
             }
             break;
     }
@@ -385,23 +408,23 @@ double Placer::random_place(int steps){
 void Placer::calculate_norm_factor(){
     cout << endl;
     cout << "============ Calculate norm factor ==============" << endl;
-    _congestion_norm_factor = 0;
+    // _congestion_norm_factor = 0;
     _wire_length_norm_factor = 0;
     for (size_t i = 0; i < _norm_num; ++i)
     {
         perturb();
-        double congestion;
+        // double congestion;
         double wire;
-        calculate_congestion_cost(congestion);
+        // calculate_congestion_cost(congestion);
         calculate_wire_length_cost(wire);
-        _congestion_norm_factor += congestion;
+        // _congestion_norm_factor += congestion;
         _wire_length_norm_factor += wire;
     }
-    _congestion_norm_factor /= double(_norm_num);
+    // _congestion_norm_factor /= double(_norm_num);
     _wire_length_norm_factor /= double(_norm_num);
-    cout << "Average congestion: " << setw(10) << _congestion_norm_factor << '\n';
+    // cout << "Average congestion: " << setw(10) << _congestion_norm_factor << '\n';
     cout << "Average wire length: " << setw(8) << _wire_length_norm_factor << '\n';
-    _congestion_norm_factor = 1/_congestion_norm_factor;
+    // _congestion_norm_factor = 1/_congestion_norm_factor;
     _wire_length_norm_factor = 1/_wire_length_norm_factor;
     cout << "=================================================" << endl;
 }
@@ -417,7 +440,7 @@ double Placer::calculate_total_cost(){
     cost_ratio = cost_ratio > 0.9 ? 0.9 : cost_ratio;
     cost_ratio = 0.5;
     // cerr << "IIIIIIIIIIIIIIII " << wire * _wire_length_norm_factor<< " " <<congestion * _congestion_norm_factor<< " " << wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio * _congestion_norm_factor<<endl;
-        return wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio * _congestion_norm_factor;
+        return wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio;
 }
 
 double Placer::calculate_total_cost(double& congestion, double& wire){
@@ -429,20 +452,23 @@ double Placer::calculate_total_cost(double& congestion, double& wire){
     cost_ratio = cost_ratio > 0.9 ? 0.9 : cost_ratio;
     cost_ratio = 0.5;
     // cerr << "IIIIIIIIIIIIIIII " << wire * _wire_length_norm_factor<< " " <<congestion * _congestion_norm_factor<< " " << wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio * _congestion_norm_factor<<endl;
-    return wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio * _congestion_norm_factor;
+    return wire * (1 - cost_ratio) * _wire_length_norm_factor + congestion * cost_ratio;
 }
 
 void Placer::calculate_congestion_cost(double& congestion){
     // add all the overflow grid values
+    // print_mcell_list();
+    // print_congestion();
     congestion = 0;
     for(int i = 0 ; i < _placement->_boundary_width ; ++i){
         for(int j = 0 ; j < _placement->_boundary_height ; ++j){
             for(int k = 0 ; k < _placement->_numLayers ; ++k){
                 if(_demand[i][j][k] > _supply[i][j][k])
-                    congestion += _demand[i][j][k] - _supply[i][j][k];
+                    congestion += (_demand[i][j][k] - _supply[i][j][k]) / _supply[i][j][k]; // the overflow ratio
             }
         }
     }
+    congestion /= (_placement->_boundary_width * _placement->_boundary_height * _placement->_numLayers);
 }
 
 void Placer::calculate_wire_length_cost(double& wire){
@@ -526,11 +552,11 @@ void Placer::init_demand_map(){
         }
     }
     // adjH and Same demand
-    for(int x = 0 ; x < _placement->_boundary_width ; ++x){
-        for(int y = 0 ; y < _placement->_boundary_height-1 ; ++y){
+    map<int,int>::iterator iter, adj_iter, same_iter;
+    for(int x = 0 ; x < _placement->_boundary_width - 1; ++x){
+        for(int y = 0 ; y < _placement->_boundary_height ; ++y){
             map<int, int> cur_map = _mcell_list[x][y];
-            map<int,int>::iterator iter, adj_iter, same_iter;
-            map<int,int> adj_map = _mcell_list[x][y+1];
+            map<int, int> adj_map = _mcell_list[x+1][y];
             for(iter = cur_map.begin() ; iter != cur_map.end() ; ++iter){
                 int MC1_id = iter->first;
                 int MC1_num = iter->second;
@@ -546,7 +572,7 @@ void Placer::init_demand_map(){
                     int demand = adjH[i]._demand;
                     int MC_num = min(MC1_num, MC2_num);
                     _demand[x][y][layer] += MC_num * demand;
-                    _demand[x][y+1][layer] += MC_num * demand;
+                    _demand[x+1][y][layer] += MC_num * demand;
                 }
 
                 for(size_t i = 0 ; i < Same.size() ; i++){  // sameDemand
@@ -561,6 +587,7 @@ void Placer::init_demand_map(){
                     _demand[x][y][layer] += MC_num * demand;                
                 }
             }
+            
         }
     }
     return;
@@ -595,6 +622,7 @@ void Placer::fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool in
                                     - (_log_table[x_dif + y_dif + z_dif] - _log_table[x_dif] - _log_table[y_dif] - _log_table[z_dif]);
                 if(inc) _demand[i][j][k] += exp(log_prob);
                 else _demand[i][j][k] -= exp(log_prob);
+                // cerr << "WIRE DEMAND " << i << " " << j << " " << k << ((inc) ? " INC" : " DEC") << exp(log_prob) << endl;
                 // cerr << "FILL " << exp(log_prob) << endl;
             }
         }
@@ -602,14 +630,19 @@ void Placer::fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool in
 }
 
 void Placer::congestion_incremental_update(set<int> netIds, bool inc){
+    // cout << "Congestion incremental update !" << endl;
+    // _placement->reportCell();
     set<int>::iterator iter;
     for(iter = netIds.begin() ; iter != netIds.end() ; ++iter){
+        // cout << "NET " << *iter << endl;
         vector<EDGE> two_pin_net = _msts[*iter]->get2pinnets();
         for(int j = 0, end_j = two_pin_net.size() ; j < end_j ; ++j){
             Pin* p1 = two_pin_net[j].first;
             Pin* p2 = two_pin_net[j].second;
             Cell* c1 = _placement->_cellArray[p1->getcellId()];
             Cell* c2 = _placement->_cellArray[p2->getcellId()];
+            // cerr << "   " << c1->getx()-_placement->_leftBoundary << "," << c1->gety()-_placement->_bottomBoundary << " ~ "
+            //     << c2->getx()-_placement->_leftBoundary << "," << c2->gety()-_placement->_bottomBoundary << endl;
             fill_demand(c1->getx()-_placement->_leftBoundary, c1->gety()-_placement->_bottomBoundary, p1->get_layer(),
                     c2->getx()-_placement->_leftBoundary, c2->gety()-_placement->_bottomBoundary, p2->get_layer(), inc);
         }
@@ -637,13 +670,156 @@ void Placer::print_congestion(){
 }
 
 void Placer::init_mcell_list(){
+#ifdef PRINT_MODE
+    print_start("Init Mcell List");
+#endif
     _mcell_list = vector<vector<map<int,int> > >(_placement->_boundary_width, vector<map<int,int> >(_placement->_boundary_height));
     for(int i = 0, end_i = _placement->_numCells ; i < end_i ; ++i){
         Cell* cur_cell = _placement->_cellArray[i];
-        map<int,int> cur_map = _mcell_list[cur_cell->getx() - _placement->_leftBoundary][cur_cell->gety() - _placement->_bottomBoundary];
+        map<int,int>& cur_map = _mcell_list[cur_cell->getx() - _placement->_leftBoundary][cur_cell->gety() - _placement->_bottomBoundary];
         if(cur_map.count(cur_cell->get_master()->getId()) == 0)
             cur_map[cur_cell->get_master()->getId()] = 1;
         else
             cur_map[cur_cell->get_master()->getId()] += 1;
+    }
+#ifdef PRINT_MODE
+    print_mcell_list();
+    print_end();
+#endif
+}
+
+void Placer::adjH_incremental_update(Cell* cur_cell, bool inc){
+    // print_mcell_list();
+    map<int,int>::iterator iter, adj_iter, same_iter;
+    int cur_mcell_Id = cur_cell->get_master()->getId();
+    int cur_x = cur_cell->getx() - _placement->_leftBoundary;
+    int cur_y = cur_cell->gety() - _placement->_bottomBoundary;
+    // cerr << "Cur x y inc: " << cur_x << " " << cur_y << " " << inc << endl;
+    if(inc){
+        // insert into map
+        if(_mcell_list[cur_x][cur_y].count(cur_mcell_Id) == 0) _mcell_list[cur_x][cur_y][cur_mcell_Id] = 1;
+        else _mcell_list[cur_x][cur_y][cur_mcell_Id] += 1;
+        // update
+        int MC1_num = _mcell_list[cur_x][cur_y][cur_mcell_Id];
+        vector<ExtraDemand> adjH = _placement->masters[cur_mcell_Id]->get_adjHDemand();
+        vector<ExtraDemand> Same = _placement->masters[cur_mcell_Id]->get_sameDemand();
+        // adjG Demand
+        if(cur_x > 0){ // have left side
+            map<int, int>& adj_map = _mcell_list[cur_x-1][cur_y];
+            for(size_t i = 0 ; i < adjH.size() ; i++){ 
+                int MC2_id = adjH[i]._extraId;
+                adj_iter = adj_map.find(MC2_id);
+                if( adj_iter == adj_map.end() ) continue;
+                int MC2_num = adj_iter->second;
+                int layer = adjH[i]._layer;
+                int demand = adjH[i]._demand;
+                int MC_num = min(MC1_num, MC2_num) - min(MC1_num-1, MC2_num);
+                // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                // cerr << "DEMAND " << cur_x-1 << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                _demand[cur_x][cur_y][layer] += MC_num * demand;
+                _demand[cur_x-1][cur_y][layer] += MC_num * demand;
+            }
+        }
+        if(cur_x < _placement->_boundary_width - 1){ // have right side
+            map<int, int>& adj_map = _mcell_list[cur_x+1][cur_y];
+            for(size_t i = 0 ; i < adjH.size() ; i++){ 
+                int MC2_id = adjH[i]._extraId;
+                adj_iter = adj_map.find(MC2_id);
+                if( adj_iter == adj_map.end() ) continue;
+                int MC2_num = adj_iter->second;
+                int layer = adjH[i]._layer;
+                int demand = adjH[i]._demand;
+                int MC_num = min(MC1_num, MC2_num) - min(MC1_num-1, MC2_num);
+                // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                // cerr << "DEMAND " << cur_x+1 << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                _demand[cur_x][cur_y][layer] += MC_num * demand;
+                _demand[cur_x+1][cur_y][layer] += MC_num * demand;
+            }
+        }
+        // Same Demand
+        map<int, int>& cur_map = _mcell_list[cur_x][cur_y];
+        for(size_t i = 0 ; i < Same.size() ; i++){  // sameDemand
+            int MC2_id = Same[i]._extraId;
+            same_iter = cur_map.find(MC2_id);
+            if( same_iter == cur_map.end() ) continue;
+            int MC2_num = same_iter->second;
+            int layer = Same[i]._layer;
+            int demand = Same[i]._demand;
+            int MC_num = min(MC1_num, MC2_num) - min(MC1_num-1, MC2_num);
+            // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+            _demand[cur_x][cur_y][layer] += MC_num * demand;                
+        }
+    }
+    else{
+        // update
+        int MC1_num = _mcell_list[cur_x][cur_y][cur_mcell_Id];
+        vector<ExtraDemand> adjH = _placement->masters[cur_mcell_Id]->get_adjHDemand();
+        vector<ExtraDemand> Same = _placement->masters[cur_mcell_Id]->get_sameDemand();
+        // adjG Demand
+        if(cur_x > 0){ // have left side
+            map<int, int>& adj_map = _mcell_list[cur_x-1][cur_y];
+            for(size_t i = 0 ; i < adjH.size() ; i++){ 
+                int MC2_id = adjH[i]._extraId;
+                adj_iter = adj_map.find(MC2_id);
+                if( adj_iter == adj_map.end() ) continue;
+                int MC2_num = adj_iter->second;
+                int layer = adjH[i]._layer;
+                int demand = adjH[i]._demand;
+                int MC_num = min(MC1_num-1, MC2_num) - min(MC1_num, MC2_num);
+                // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                // cerr << "DEMAND " << cur_x-1 << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                _demand[cur_x][cur_y][layer] += MC_num * demand;
+                _demand[cur_x-1][cur_y][layer] += MC_num * demand;
+            }
+        }
+        if(cur_x < _placement->_boundary_width - 1){ // have right side
+            map<int, int>& adj_map = _mcell_list[cur_x+1][cur_y];
+            for(size_t i = 0 ; i < adjH.size() ; i++){ 
+                int MC2_id = adjH[i]._extraId;
+                adj_iter = adj_map.find(MC2_id);
+                if( adj_iter == adj_map.end() ) continue;
+                int MC2_num = adj_iter->second;
+                int layer = adjH[i]._layer;
+                int demand = adjH[i]._demand;
+                int MC_num = min(MC1_num-1, MC2_num) - min(MC1_num, MC2_num);
+                // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                // cerr << "DEMAND " << cur_x+1 << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+                _demand[cur_x][cur_y][layer] += MC_num * demand;
+                _demand[cur_x+1][cur_y][layer] += MC_num * demand;
+            }
+        }
+        // Same Demand
+        map<int, int>& cur_map = _mcell_list[cur_x][cur_y];
+        for(size_t i = 0 ; i < Same.size() ; i++){  // sameDemand
+            int MC2_id = Same[i]._extraId;
+            same_iter = cur_map.find(MC2_id);
+            if( same_iter == cur_map.end() ) continue;
+            int MC2_num = same_iter->second;
+            int layer = Same[i]._layer;
+            int demand = Same[i]._demand;
+            int MC_num = min(MC1_num-1, MC2_num) - min(MC1_num, MC2_num);
+            // cerr << "DEMAND " << cur_x << " " << cur_y << " " << layer << " : " << MC_num * demand << endl;
+            _demand[cur_x][cur_y][layer] += MC_num * demand;                
+        }
+        // delete from map
+        if(_mcell_list[cur_x][cur_y][cur_mcell_Id] == 1) _mcell_list[cur_x][cur_y].erase(cur_mcell_Id);
+        else _mcell_list[cur_x][cur_y][cur_mcell_Id] -= 1;
+    }
+}
+
+void Placer::print_mcell_list(){
+    map<int,int>::iterator iter;
+    for(int i = 0 ; i < _placement->_boundary_width ; ++i){
+        for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+            map<int,int> cur_map = _mcell_list[i][j];
+            cout << "[";
+            for(int k = 0 ; k < _placement->_numMasterCell ; ++k){
+                if(cur_map.count(k)) cout  << cur_map[k] << "  ";
+                else cout << '*' << "  ";
+            }
+                
+            cout << "]";
+        }
+        cout << endl;
     }
 }

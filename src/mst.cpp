@@ -106,22 +106,26 @@ void MST::update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement){
 void MST::construct2pins(const vector<Pin*>& pin_ary){
     _two_pin_nets.clear();
     multimap<int, EDGE>::iterator iter;
+    // cout << "\nCONSTRUCT NET " << pin_ary[0]->getNetId() << endl;
     // make_sets
     make_set(pin_ary);
     int cnt = 0;
     for(iter = _weight2edge.begin() ; iter != _weight2edge.end() ; ++iter){
+        // cout << "TRAVERSE EDGE" << iter->second.first->getcellId()+1 << "," << iter->second.second->getcellId()+1 << endl;
         if(find_set(iter->second.first) != find_set(iter->second.second)){ // find_set
             // union_set
             unize(iter->second.first, iter->second.second);
+            // cout << "ADD 2NET " << iter->second.first->getcellId()+1 << "," << iter->second.second->getcellId()+1 << endl;
             _two_pin_nets.push_back(iter->second);
             ++cnt;
-            if(cnt == _numPins) break;
+            if(cnt == _numPins - 1) break;
         }
     }
 }
 
 void MST::make_set(const vector<Pin*>& pin_ary){
     for(int i = 0, end_i = pin_ary.size() ; i < end_i ; ++i){
+        // cout << "SET " << pin_ary[i]->getcellId()+1 << " DEPUTY " << pin_ary[i]->getcellId()+1 << endl;
         pin_ary[i]->set_deputy(pin_ary[i]);
     }
 }
@@ -129,17 +133,22 @@ void MST::make_set(const vector<Pin*>& pin_ary){
 Pin* MST::find_set(Pin* pin){
     vector<Pin*> pin_on_path;
     Pin* next_pin = pin->get_deputy();
+    // cout << "GET " << pin->getcellId()+1 << " DEPUTY " << next_pin->getcellId()+1 << endl;
     while(next_pin != pin){
         pin_on_path.push_back(pin);
-        next_pin = pin;
+        pin = next_pin;
+        next_pin = pin->get_deputy();
     }
     for(int i = 0, end_i = pin_on_path.size() ; i < end_i ; ++i){
+        // cout << "SETT " << pin_on_path[i]->getcellId()+1 << " DEPUTY " << next_pin->getcellId()+1 << endl;
         pin_on_path[i]->set_deputy(next_pin);
     }
     return next_pin;
 }
 
 void MST::unize(Pin* p1, Pin* p2){
-    p1->set_deputy(p2);
+    // cout << "UNIZE" << endl;
+    find_set(p1)->set_deputy(find_set(p2));
+    // cout << "SETTT " << find_set(p1)->getcellId()+1 << " DEPUTY " << find_set(p2)->getcellId()+1 << endl;
     return;
 }

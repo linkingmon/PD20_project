@@ -89,6 +89,7 @@ private:
     vector<MST*> _msts;
     void fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool inc);
     void congestion_incremental_update(set<int>, bool);
+    void adjH_incremental_update(Cell* cur_cell, bool inc);
 
     // SA partial recovery
     int _perturb_type;
@@ -107,6 +108,7 @@ private:
         myusage.report(true, true);    
         };
     void print_congestion();
+    void print_mcell_list();
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
 };
