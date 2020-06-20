@@ -30,6 +30,7 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     // initialize the congection map
     init_supply_map();
     init_demand_map();
+    print_congestion(); exit(-1);
     // record cell place for checking max cell move
     record_cell_place();
     // init fix Cell list
@@ -548,7 +549,7 @@ void Placer::init_supply_map(){
     for(int i = 0; i < _placement->_numNonDefault ; ++i){
         NonDefault* cur_grid = _placement->nondefault[i];
         // cur_grid->print();
-        double& cur_val = _supply[cur_grid->getx()-_placement->_leftBoundary][cur_grid->gety()-_placement->_bottomBoundary][cur_grid->getz()];
+        double& cur_val = _supply[cur_grid->getx()-_placement->_leftBoundary][cur_grid->gety()-_placement->_bottomBoundary][cur_grid->getz()-1];
         cur_val += cur_grid->get_offset();
         if(cur_val <= 0) cur_val = 1e-5;
     }
