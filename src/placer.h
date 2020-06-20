@@ -34,6 +34,7 @@ private:
     vector<vector<vector<double> > > _supply;
     vector<vector<vector<double> > > _demand;
     vector<vector<map<int, int> > > _mcell_list;
+    vector<Cell> _init_cellAry;
 
     // retrace solution
     vector<Cell> _best_solution;
@@ -90,6 +91,8 @@ private:
     void fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool inc);
     void congestion_incremental_update(set<int>, bool);
     void adjH_incremental_update(Cell* cur_cell, bool inc);
+    void record_cell_place();
+    double cal_move_cell_num();
 
     // SA partial recovery
     int _perturb_type;
@@ -103,8 +106,9 @@ private:
 
     // Clean up Placer
     void print_temp(){
-        cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << _iteration_cnt << " has [Cost / Congetstion / Wire / Range]: " 
-            << setprecision(10) << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ")" << endl;
+        cout << "Temp " << fixed << setprecision(5) << cur_temperature << " Iteration " << _iteration_cnt << " has [Cost / Congetstion / Wire / Range / Move cell]: " 
+            << setprecision(5) << _best_cost << " " << _best_congestion << " " << _best_wire << " (" << x_range << "," << y_range << ") " 
+            << int(cal_move_cell_num()) << "/" << _placement->_maxMoveCell << endl;
         myusage.report(true, true);    
         };
     void print_congestion();

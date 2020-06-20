@@ -71,6 +71,8 @@ void MST::update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement){
         Cell* cur_cell = placement->_cellArray[pin->getcellId()];
         if(pin != pin_ary[i]){
             // erase the map
+            // cerr << "CUR PIN" << pin->getcellId() << " " << pin->get_name() << endl;
+            // cerr << "COUNTER PIN" << pin_ary[i]->getcellId() << " " << pin_ary[i]->get_name() << endl;
             EDGE cur_edge = EDGE(minmax(pin, pin_ary[i]));
             int cur_weight = _edge2weight[cur_edge];
             // cerr << "E2W ERASE" << " (" << cur_edge.first->getcellId() << "/" << cur_edge.first->get_name() 
@@ -99,7 +101,6 @@ void MST::update(Pin* pin, const vector<Pin*>& pin_ary, Placement* placement){
         }
     }
     construct2pins(pin_ary);
-    // cerr << "UPDATE DONE" << endl;
     return;
 }
 
@@ -121,6 +122,7 @@ void MST::construct2pins(const vector<Pin*>& pin_ary){
             if(cnt == _numPins - 1) break;
         }
     }
+    // cout << "CONSTRUCT DONE" << endl;
 }
 
 void MST::make_set(const vector<Pin*>& pin_ary){

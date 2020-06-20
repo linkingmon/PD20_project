@@ -43,7 +43,7 @@ class Pin
 {
 public:
     // constructor and destructor
-    Pin(string name, int layer) : _name(name), _layer(layer){};
+    Pin(string name, int layer) : _name(name), _layer(layer), _netId(-1) {};
     ~Pin() {};
     void print() { cout << "(" << _name << "," << _layer << ")";};
     void print_with_cell() { cout << "(" << _cellId << "/" << _name << "," << _layer << ")onNet" << _netId;};
