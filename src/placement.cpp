@@ -129,7 +129,7 @@ void Placement::printSummary() const
     cout << endl;
     cout << "==================== Summary ====================" << endl;
     cout << "* Max Cell Move: " << _maxMoveCell << '\n';
-    cout << "* Boundary: (" << _leftBoundary << "," << _bottomBoundary << ") : (" << _bottomBoundary << "," << _topBoundary << ")\n";
+    cout << "* Boundary: (" << _leftBoundary << "," << _rightBoundary << ") : (" << _bottomBoundary << "," << _topBoundary << ")\n";
     cout << "* Num of Layers: " << _numLayers << '\n'; 
     for(int i = 0 ; i < _numLayers ; ++i) layers[i]->print();
     cout << "* Num of Non default supply grid: " << _numNonDefault << '\n';

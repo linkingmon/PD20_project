@@ -1,6 +1,5 @@
 #include "placer.h"
 #include <cmath>
-#include "utils.h"
 #include <cstdlib>
 #include <cassert>
 #define PRINT_MODE
@@ -57,7 +56,8 @@ void Placer::place(){
     T1 = avg_cost / log(1 / P); // set initial temperature
     double terminate_temperature = 1e-4;
     int num_stage_1 = 2; 
-    int num_stage_2 = num_stage_1 + _placement->_numCells;
+    // int num_stage_2 = num_stage_1 + _placement->_numCells;
+    int num_stage_2 = num_stage_1 + 10;
 
     // stage I : aims to put into the outline (minimize area)
     print_start("SA Floorplanning - Stage I");
@@ -103,6 +103,8 @@ void Placer::place(){
     recover_best_solution();
     _placement->reportCell();
     print_congestion();
+    print_nets();
+    double w; calculate_wire_length_cost(w); cerr << "Total Wire length: " << w << endl;
 }
 
 double Placer::SA_iteration()
@@ -509,7 +511,7 @@ void Placer::calculate_wire_length_cost(double& wire){
     for(int i = 0, end_i = _placement->_numNets ; i < end_i ; ++i){
         if(_netlength[i] == -1) {
             int wire_len = 0;
-            wire_len = cal_net_cost(_placement->_netArray[i]); 
+            // wire_len = cal_net_cost(_placement->_netArray[i]); 
             vector<EDGE> two_pin_net = _msts[i]->get2pinnets();
             // cerr << "GET NET" << endl;
             for(int j = 0, end_j = two_pin_net.size() ; j < end_j ; ++j){
@@ -523,7 +525,8 @@ void Placer::calculate_wire_length_cost(double& wire){
                 // cerr << p2->getcellId() << endl;
                 // cerr << p2->get_name() << endl;
                 // cerr << "(" << p1->getcellId() << "/" << p1->get_name() << ") (" << p2->getcellId() << "/" << p2->get_name() << ")" << endl;
-                wire_len += abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety() + abs(p1->get_layer() - p2->get_layer()));
+                // cerr << "Wire " << abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety()) + abs(p1->get_layer() - p2->get_layer()) << endl;
+                wire_len += abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety()) + abs(p1->get_layer() - p2->get_layer());
             }
             // exit(-1);
             wire += wire_len; 

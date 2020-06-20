@@ -10,6 +10,7 @@
 #include "mst.h"
 #include "myUsage.h"
 #include <set>
+#include "utils.h"
 using namespace std;
 
 extern MyUsage myusage;
@@ -63,8 +64,8 @@ private:
     void set_range() {
         // recover_best_solution();
         // if(_iteration_cnt % 5 == 0) recover_best_solution();
-        // x_range = _placement->_boundary_width / (_iteration_cnt / 3 + 1); x_range = x_range < 2 ? 2 : x_range;
-        // y_range = _placement->_boundary_height / (_iteration_cnt / 3 + 1); y_range = y_range < 2 ? 2 : y_range;
+        // x_range = _placement->_boundary_width / (_iteration_cnt / 10 + 1); x_range = x_range < 2 ? 2 : x_range;
+        // y_range = _placement->_boundary_height / (_iteration_cnt / 10 + 1); y_range = y_range < 2 ? 2 : y_range;
         x_range = _placement->_boundary_width;
         y_range = _placement->_boundary_height;
     };
@@ -115,6 +116,22 @@ private:
         };
     void print_congestion();
     void print_mcell_list();
+    void print_nets(){
+        print_start("Two pin nets");
+        for(int i = 0 ; i < _placement->_numNets ; ++i){
+            cout << "NET " << i << endl;
+            vector<EDGE> two_pin_net = _msts[i]->get2pinnets();
+            for(int j = 0, end_j = two_pin_net.size() ; j < end_j ; ++j){
+                Pin* p1 = two_pin_net[j].first;
+                Pin* p2 = two_pin_net[j].second;
+                Cell* c1 = _placement->_cellArray[p1->getcellId()];
+                Cell* c2 = _placement->_cellArray[p2->getcellId()];
+                cerr << "   " << c1->getx()-_placement->_leftBoundary << "," << c1->gety()-_placement->_bottomBoundary << " ~ "
+                    << c2->getx()-_placement->_leftBoundary << "," << c2->gety()-_placement->_bottomBoundary << endl;
+            }
+        }
+        print_end();
+    }
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
 };
