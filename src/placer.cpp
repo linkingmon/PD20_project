@@ -30,7 +30,6 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     // initialize the congection map
     init_supply_map();
     init_demand_map();
-    print_congestion(); exit(-1);
     // record cell place for checking max cell move
     record_cell_place();
     // init fix Cell list
