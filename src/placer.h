@@ -31,10 +31,12 @@ private:
     void init_supply_map();
     void init_demand_map();
     void init_mcell_list();
+    void init_fixCell_list();
     vector<vector<vector<double> > > _supply;
     vector<vector<vector<double> > > _demand;
     vector<vector<map<int, int> > > _mcell_list;
     vector<Cell> _init_cellAry;
+    vector<int> _fixCell_list;
 
     // retrace solution
     vector<Cell> _best_solution;

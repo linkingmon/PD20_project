@@ -93,6 +93,8 @@ public:
     int setx(int x) {_x = x;};
     int sety(int y) {_y = y;};
     Master* get_master() {return _type;};
+
+    bool is_movable() {return _isMovable;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x

@@ -32,6 +32,8 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     init_demand_map();
     // record cell place for checking max cell move
     record_cell_place();
+    // init fix Cell list
+    init_fixCell_list();
 }
 
 void Placer::place(){
@@ -227,8 +229,10 @@ void Placer::recover_best_solution(){
 
 void Placer::perturb(){
     _perturb_type = rand_01() < 0.2 ? MOVE : SWAP;
-    _perturb_val1 = rand() % (_placement->_numCells);
-    _perturb_val2 = rand() % (_placement->_numCells);
+    _perturb_val1 = rand() % (_fixCell_list.size());
+    _perturb_val1 = _fixCell_list[_perturb_val1];
+    _perturb_val2 = rand() % (_fixCell_list.size());
+    _perturb_val2 = _fixCell_list[_perturb_val2];
 
     _temp_x = _placement->_cellArray[_perturb_val1]->getx();
     _temp_y = _placement->_cellArray[_perturb_val1]->gety();
@@ -451,11 +455,11 @@ double Placer::calculate_total_cost(){
     _beta = 0;
     double cost_ratio_congest = 0.5 + (1 - _beta);
     cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
-    cost_ratio_congest = 0.5;
+    cost_ratio_congest = 0.3;
 
     double cost_ratio_move = 0.5 + (1 - _beta);
     cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move = 0.5;
+    cost_ratio_move = 0.3;
     // why congestion is inf
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
@@ -469,11 +473,11 @@ double Placer::calculate_total_cost(double& congestion, double& wire){
     _beta = 0;
     double cost_ratio_congest = 0.5 + (1 - _beta);
     cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
-    cost_ratio_congest = 0.5;
+    cost_ratio_congest = 0.3;
 
     double cost_ratio_move = 0.5 + (1 - _beta);
     cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move = 0.5;
+    cost_ratio_move = 0.3;
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
                 + cal_move_cell_num() / _placement->_maxMoveCell * cost_ratio_move;
@@ -870,4 +874,11 @@ double Placer::cal_move_cell_num(){
                 ++move_num;
     }
     return move_num;
+}
+
+void Placer::init_fixCell_list(){
+    _fixCell_list.reserve(_placement->_numCells);
+    for(int i = 0 ; i < _placement->_numCells ; ++i){
+        if(_placement->_cellArray[i]->is_movable()) _fixCell_list.push_back(i);
+    }
 }
