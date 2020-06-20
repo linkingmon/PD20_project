@@ -55,7 +55,7 @@ void Placer::place(){
     // random floorplanning for calculate avg cost
     double avg_cost = random_place(N);
     T1 = avg_cost / log(1 / P); // set initial temperature
-    double terminate_temperature = 1e-3;
+    double terminate_temperature = 1e-4;
     int num_stage_1 = 2; 
     int num_stage_2 = num_stage_1 + _placement->_numCells;
 
@@ -460,10 +460,12 @@ double Placer::calculate_total_cost(){
     double cost_ratio_move = 0.5 + (1 - _beta);
     cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
     cost_ratio_move = 0.3;
+    int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
+    excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
     // why congestion is inf
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
-                + cal_move_cell_num() / _placement->_maxMoveCell * cost_ratio_move;
+                + excess_move_cell * cost_ratio_move;
 }
 
 double Placer::calculate_total_cost(double& congestion, double& wire){
@@ -478,9 +480,11 @@ double Placer::calculate_total_cost(double& congestion, double& wire){
     double cost_ratio_move = 0.5 + (1 - _beta);
     cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
     cost_ratio_move = 0.3;
+    int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
+    excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
-                + cal_move_cell_num() / _placement->_maxMoveCell * cost_ratio_move;
+                + excess_move_cell * cost_ratio_move ;
 }
 
 void Placer::calculate_congestion_cost(double& congestion){
