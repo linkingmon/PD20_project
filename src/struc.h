@@ -56,8 +56,6 @@ public:
 private:
     int _cellId;        // the cell id in the cellArray
     int _layer;         // the layer num of the pin
-    int _row;
-    int _col;           //
     string _name;       // pin name
 
 };

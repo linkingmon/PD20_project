@@ -14,13 +14,20 @@ class Master
     friend class Cell;
 public:
     // constructor and destructor
-    Master(string name, int numPin, int numBlockage) : _name(name), _numPin(numPin), _numBlockage(numBlockage) {};
+    Master(string name, int numPin, int numBlockage , int id ) : _name(name), _numPin(numPin), _numBlockage(numBlockage) , _id(id){};
     ~Master() {};
 
     void add_pin(string name, int layer) {_PinName2Id[name] = _pinArray.size(); _pinArray.push_back(new Pin(name, layer));};
     void add_blockage(int layer, int demand) {_BlockLayers.push_back(layer); _BlockDemand.push_back(demand);};
     void add_adj_demand(int extraId, int layer, int demand) {_adjDemand.push_back(ExtraDemand(extraId, layer, demand));};
     void add_same_demand(int extraId, int layer, int demand) {_sameDemand.push_back(ExtraDemand(extraId, layer, demand));};
+
+    //access method 
+    vector<int> get_block_layer()  const { return  _BlockLayers; }
+    vector<int> get_block_demand() const { return _BlockDemand; }
+    int getId() const               { return _id;   }
+    vector<ExtraDemand> get_sameDemand() const { return _sameDemand; }
+    vector<ExtraDemand> get_adjHDemand() const { return _adjDemand; }
 
     void print() {
         cout << "Master cell name: " << _name << endl;
@@ -52,6 +59,7 @@ public:
 
 private:
     string _name;                       // Name of the master cell (MC)
+    int _id;                            // id of master cell
     int _numPin;                        // Number of pin of this MC
     int _numBlockage;                   // Number of blockage of this MC
     vector<Pin*> _pinArray;             // Pin array of the MC
@@ -80,6 +88,7 @@ public:
     int gety() {return _y;};
     int get_norm_x( int n_factor) { return _x - n_factor;} // get normalize x
     int get_norm_y( int n_factor) { return _y - n_factor;} // get normalize y
+    Master* get_master() const { return _type; }
 
     int setx(int x) {_x = x;};
     int sety(int y) {_y = y;};

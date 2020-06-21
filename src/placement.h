@@ -26,7 +26,7 @@ public:
 
     // access method
     Cell* getCell(size_t i) { return _cellArray[i];} 
-
+    Master* getMCell(size_t i ) { return masters[i];}    
     // modify method
     void parseInput(fstream &inFile);
 
