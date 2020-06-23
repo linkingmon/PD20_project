@@ -6,8 +6,8 @@
 #include <iostream>
 #include <cstdlib>
 #include "struc.h"
-using namespace std;
 
+using namespace std;
 
 class Master
 {

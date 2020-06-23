@@ -9,6 +9,7 @@
 #include <functional>
 #include "congestion.h"
 #include "MinHeap.h"
+#include "struc.h"
 
 // #define Max_Distance = 100 ;
 using namespace std;
@@ -22,20 +23,28 @@ enum SP_direction{
 class Coordinate{
 public:
     Coordinate(){}
-    Coordinate(int i_x,int i_y, int i_z, double d):x(i_x),y(i_y),z(i_z),distance(d){
-
+    Coordinate(int i_x,int i_y, int i_z, double d):x(i_x),y(i_y),z(i_z),distance(d),bend(10e4){
+        H_bend = false;
+        V_bend = false;
     }
+    void update_position( int idx ) { index = idx;}
     int x;
     int y;
     int z;
+    int bend;       //the total bend made when touch the point
+    bool H_bend;    //the min_distance and min total bend can be acheive by the last line is horizotal
+    bool V_bend;    //the min_distance and min total bend can be acheive by the last line is horizotal
     // int id(int width , int height) { return x + y * width + z * width * height ;}
     double distance;
+    double estimate_distance;
     int index;      // store the index in min_heap
+    Coordinate* H_predecessor;
+    Coordinate* V_predecessor;
     Coordinate* predecessor;
-    bool operator > (const Coordinate& b){return (distance > b.distance);}
-    bool operator < (const Coordinate& b){return (distance < b.distance);}
+    bool operator > (const Coordinate& b){return (distance + estimate_distance > b.distance + b.estimate_distance);}
+    bool operator < (const Coordinate& b){return (distance + estimate_distance < b.distance + b.estimate_distance);}
     bool operator == (const Coordinate& b){return (x == b.x && y == b.y);}
-    friend ostream& operator<<(ostream& os, const Coordinate& a) { os<<a.distance; return os;}
+    friend ostream& operator<<(ostream& os, const Coordinate& a) { os<<"("<<a.x<<", "<<a.y<<") "<< " idx: " << a.index << " d is "<<(a.distance + a.estimate_distance)<<" bend: "<<a.bend; return os;}
 };
 
 class Coordinate_Compartor{
@@ -69,8 +78,12 @@ public:
     void Construct_H_Edge();
     void Construct_V_Edge();
     void Dijkstra();                                            // 需要Min-Priority Queue
-    void Relax( Coordinate* , Coordinate* , double weight );    //dijkstra function
+    bool Relax( Coordinate* , Coordinate* , double weight );    //dijkstra function
     void AddEdge(int from, int to, int weight);
+    void Build_the_path();
+    void Build_the_path_old();
+    Coordinate* End_point();
+    int Estimate_distance_to_target(int,int);       // function of estimate distance to target
 private:
     int num_vertex;
     int source_x, source_y, source_z;
@@ -81,11 +94,13 @@ private:
     Congestion_Row* row_map;
     Congestion_Col* col_map;
     Congestion*     grid_map;
+    Bend*           target_bend;
     vector<vector<list<pair<SP_direction,double> > > > AdjList;
     vector<SP_direction> predecessor;
     vector<Coordinate> grid_point_Min_Heap;
     vector<vector<Coordinate*>> grid_point_pointer;
     vector<vector<bool>> visited;
+    vector<vector<bool>> inside_min_heap;
 };
 
 

@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     // running placment
     print_start("Run placement");
     Placer *placer = new Placer(placement);
-    placer->place();
+    // placer->place();
     print_end();
 
     // running routing

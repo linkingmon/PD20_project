@@ -10,51 +10,44 @@
 #include "placement.h"
 #include "congestion.h"
 #include "maze_router.h"
+extern "C" {
+    #include "../flute/flute.h"
+    // #include "flute.h"
+    void    readLUT();
+}
+
 using namespace std;
-
-class bend{
-public:
-    bend() {}
-    bend( int x , int y ,int z , bend* p = NULL , bend* n = NULL):_x(x),_y(y),_z(z),prev_bend(p),next_bend(n){}
-    void set_prev( bend* p ) { prev_bend = p ;}
-    void set_next( bend* n ) { next_bend = n ;}
-    bend* get_prev() const { return prev_bend;}
-    bend* get_next() const { return next_bend;}
-    void print() { cout<<"x is: "<<setw(5)<< _x <<" y is: "<<setw(5)<< _y <<setw(5)<<" z is "<<setw(5)<< _z <<endl;}
-    int _x ;
-    int _y ; 
-    int _z ;
-    bend* prev_bend;
-    bend* next_bend;
-};
-
+template<class data>
 class branch{
 public:
     branch() {}
-    branch(int x, int y, int z ,int n):_x(x),_y(y),_z(z),_n(n){}
-    int _x;     //row index
-    int _y;     //column index
-    int _z;     //layer index
-    int _n;     //neighbor
+    branch(data x, data y, data z ,data n = 0):_x(x),_y(y),_z(z),_n(n){}
+    data _x;     //row index
+    data _y;     //column index
+    data _z;     //layer index
+    data _n;     //neighbor
 };
 
+template<class data>
 class two_pin_net
 {
 public:
-    two_pin_net(Pin* a , Pin* b) : p_source(a),p_target(b){}
-    bend* get_source() { return source;};
-    void set_source( bend* root ) { source = root;}
+    two_pin_net(branch<data>* a, branch<data>* b) : b_source(a), b_target(b){}
+    two_pin_net() {}
+    ~two_pin_net(){}
+    Bend* get_source() { return source;};
+    void set_source( Bend* root ) { source = root;}
     void print_bend() { 
-        bend* temp = source ; 
+        Bend* temp = source ; 
         while(temp != NULL){
             temp->print();
             temp = temp->get_next();
         }
     }
 private:
-    Pin* p_source;
-    Pin* p_target;
-    bend* source; //staring point
+    branch<data>* b_source;
+    branch<data>* b_target;
+    Bend* source; //staring point
 
 };
 //to do list
@@ -124,10 +117,10 @@ public:
     }
     void two_pin_net_L_routing(Pin* , Pin* );           // perform L routing in 2D plane with two pin
     void two_pin_net_Z_routing(Pin* , Pin* );           // perform Z routing in 2D plane with two pin
-    bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z );     // perform L routing in 2D plane
-    bend* Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z);        // perform Z routing in 2D plane
-    double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
-    double Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , bend*& Z_bend );  //2D plane Z routing with one Horizontal and two vertical route
+    Bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z );     // perform L routing in 2D plane
+    Bend* Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z);        // perform Z routing in 2D plane
+    double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
+    double Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with one Horizontal and two vertical route
 
     double V_route(size_t x , size_t y1, size_t y2 , size_t z );    // straight route in Vertical ( cross Row )
     double H_route(size_t x1 , size_t x2, size_t y , size_t z );    // straight route in Horizontal ( cross Col )
@@ -143,28 +136,31 @@ public:
     void maze_routing();
     void A_star_search_routing();
     void route() ;
-    // {
-    //     cout << "Routing ..." << endl;
-    //     cout<<(*row_map)(2,3,1)<<endl;
-
-    //     row_map->print_congestion();
-    //     col_map->print_congestion();
-        
-    //     construct_grid_map();
-    //     construct_supply_demand_map();
-    //     supply_grid_map->print_congestion();
-    //     demand_grid_map->print_congestion();
-    //     }
-
+    Tree Flute_function(vector<double> , vector<double> );
+    void expansion();
+    void update_x_expansion(int , double);
+    void update_y_expansion(int , double);
+    int  find_expand_x_position(double);
+    int  find_expand_y_position(double);
+    void construct_two_pin_net( Net* , int );
+    void construct_two_pin_net_with_expansion(Net*, int);
+    void construct_total_two_pin_net(bool);
+   
 private:
     Placement * _placement;
-    vector<two_pin_net*> twopin_netlist_L;
-    vector<two_pin_net*> twopin_netlist_Z;
+    vector<two_pin_net<int>*> twopin_netlist_L;
+    vector<two_pin_net<int>*> twopin_netlist_Z;
     Congestion_Row* row_map;            //congestion of row
     Congestion_Col* col_map;            //congestion of column
     Congestion* supply_grid_map;        //supply of total grid
     Congestion* demand_grid_map;        //demand of total grid
-    vector<vector<Grid*>> grid_map;      //grid map include cell information 
+    vector<vector<Grid*>> grid_map;     //grid map include cell information 
+    vector<double> x_expand_factor;     //expansion factor of x
+    vector<double> x_expand_result;     //expansion result of x
+    vector<double> y_expand_factor;     //expansion factor of y
+    vector<double> y_expand_result;     //expansion result of y
+    vector<vector<two_pin_net<double>>> two_pin_netlist;
+    
     // Clean up Router
     void clear();
 };

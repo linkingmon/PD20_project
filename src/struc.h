@@ -70,4 +70,21 @@ public:
 };
 
 
+class Bend{
+public:
+    Bend() {}
+    Bend( int x , int y ,int z , Bend* p = NULL , Bend* n = NULL):_x(x),_y(y),_z(z),prev_bend(p),next_bend(n){}
+    void set_prev( Bend* p ) { prev_bend = p ;}
+    void set_next( Bend* n ) { next_bend = n ;}
+    Bend* get_prev() const { return prev_bend;}
+    Bend* get_next() const { return next_bend;}
+    void print() { cout<<"x is: "<<setw(5)<< _x <<" y is: "<<setw(5)<< _y <<setw(5)<<" z is "<<setw(5)<< _z <<endl;}
+    int _x ;
+    int _y ; 
+    int _z ;
+    Bend* prev_bend;
+    Bend* next_bend;
+    // void operator = (Coordinate a){ _x = a.x ; _y = a.y ; _z = a.z; }
+};
+ 
 #endif // STRUC_H
