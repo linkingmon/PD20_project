@@ -12,6 +12,7 @@
 #include "myUsage.h"
 #include <set>
 #include "utils.h"
+#include <cmath>
 using namespace std;
 
 extern MyUsage myusage;
@@ -65,10 +66,10 @@ private:
     void set_range() {
         // recover_best_solution();
         // if(_iteration_cnt % 5 == 0) recover_best_solution();
-        // x_range = _placement->_boundary_width / (_iteration_cnt / 10 + 1); x_range = x_range < 2 ? 2 : x_range;
-        // y_range = _placement->_boundary_height / (_iteration_cnt / 10 + 1); y_range = y_range < 2 ? 2 : y_range;
-        x_range = _placement->_boundary_width;
-        y_range = _placement->_boundary_height;
+        x_range = _placement->_boundary_width / (_iteration_cnt / 5 + 1); x_range = x_range < 2 ? 2 : x_range;
+        y_range = _placement->_boundary_height / (_iteration_cnt / 5 + 1); y_range = y_range < 2 ? 2 : y_range;
+        // x_range = int(_placement->_boundary_width * exp(-1/cur_temperature));
+        // y_range = int(_placement->_boundary_height * exp(-1/cur_temperature));
     };
 
     // initial SA related
@@ -85,7 +86,7 @@ private:
     bool calculate_congestion_cost(double& congestion);
     void calculate_wire_length_cost(double& wire);
     double calculate_total_cost(double& congestion, double& wire, bool check_feasible);
-    double calculate_total_cost();
+    double calculate_total_cost(bool check_feasible);
     vector<int> _netlength;
     vector<MST*> _msts;
     void fill_demand(int x1, int y1, int z1, int x2, int y2, int z2, bool inc);
@@ -101,6 +102,7 @@ private:
     int _movecell_feasible_count;
     int _congest_feasible_chain_size = 100;
     int _movecell_feasible_chain_size = 100;
+    bool movcell_overflow;
 
     // SA partial recovery
     int _perturb_type;
@@ -108,6 +110,7 @@ private:
     int _perturb_val2;
     int _temp_x;
     int _temp_y;
+    int _best_iteration;
 
     // log lookup table
     vector<double> _log_table;
@@ -135,6 +138,9 @@ private:
                     << c2->getx()-_placement->_leftBoundary << "," << c2->gety()-_placement->_bottomBoundary << endl;
             }
         }
+        double wire;
+        calculate_wire_length_cost(wire);
+        cout << "Total MST wire length: " << wire << endl;
         print_end();
     }
     void clear();

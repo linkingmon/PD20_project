@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cassert>
 #define PRINT_MODE
+#define EXP 2.71828182
 
 enum {
     MOVE,
@@ -37,8 +38,10 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     _congest_feasible_count = 0;
     _movecell_feasible_count = 0;
     // initialize the feasible chain with one false
-    _congest_feasible_chain.push_back(false);
-    _movecell_feasible_chain.push_back(false);
+    // double wire;
+    // calculate_wire_length_cost(wire);
+    // cout << wire<<endl;exit(-1);
+    // print_congestion(); exit(-1);
 }
 
 void Placer::place(){
@@ -49,7 +52,7 @@ void Placer::place(){
     // calculate the normalize factor of congestion and wirelength (highly congested condition will not be present in random floorplan with high probalbility)
     calculate_norm_factor();
     recover_best_solution();
-    _best_cost = calculate_total_cost(_best_congestion, _best_wire, false);
+    _best_cost = calculate_total_cost(_best_congestion, _best_wire, true);
     // print_congestion();
 
     // specify prameters
@@ -79,7 +82,7 @@ void Placer::place(){
     print_start("Fast-SA Floorplanning - Stage II");
     recover_best_solution();
     avg_cost = 1e-3;
-    for (_iteration_cnt = num_stage_1; _iteration_cnt < num_stage_2; ++_iteration_cnt)
+    for (_iteration_cnt = num_stage_1;  ; ++_iteration_cnt)
     {
         cur_temperature = T1 * avg_cost / _iteration_cnt / c;
         set_range();
@@ -87,13 +90,15 @@ void Placer::place(){
     print_temp();
 #endif
         avg_cost = SA_iteration();
+        if(_iteration_cnt > _best_iteration + 20)
+            break;
     }
     print_end();
 
     // stage III : classical SA
     print_start("Fast-SA Floorplanning - Stage III");
     recover_best_solution();
-    for (_iteration_cnt = num_stage_2;; ++_iteration_cnt)
+    for (; ; ++_iteration_cnt)
     {
         cur_temperature = T1 * avg_cost / _iteration_cnt * 100 / c;
         set_range();
@@ -108,16 +113,15 @@ void Placer::place(){
 
     recover_best_solution();
     _placement->reportCell();
-    print_congestion();
+    // print_congestion();
     print_nets();
-    double w; calculate_wire_length_cost(w); cerr << "Total Wire length: " << w << endl;
 }
 
 double Placer::SA_iteration()
 {
     // local parameters
     double prev_cost, cur_cost;
-    prev_cost = calculate_total_cost();
+    prev_cost = calculate_total_cost(false);
 
     _reject_num = 0;
     _uphill_num = 0;
@@ -153,7 +157,7 @@ double Placer::SA_iteration()
             if (d_cost > 0)
                 ++_uphill_num;
             prev_cost = cur_cost;
-            if (cur_cost < _best_cost)
+            if (cur_cost < _best_cost && !movcell_overflow)
             {
                 keep_best_cost(cur_cost, congestion, wire);
                 keep_best_solution();
@@ -204,6 +208,7 @@ void Placer::keep_best_cost(double &cost, double &congestion, double &wire){
     _best_cost = cost;
     _best_wire = wire;
     _best_congestion = congestion;
+    _best_iteration = _iteration_cnt;
     return;
 }
 
@@ -399,14 +404,14 @@ double Placer::random_place(int steps){
     double total_cost = 0; // recording the average uphill move cost
     double best_cost, prev_cost, cur_cost;
     int t = 0; // times of uphill moves
-    best_cost = prev_cost = calculate_total_cost();
+    best_cost = prev_cost = calculate_total_cost(false);
     // keep best
     do
     {
         for (int i = 0; i < steps; ++i)
         {
             perturb();
-            cur_cost = calculate_total_cost();
+            cur_cost = calculate_total_cost(true);
             if (cur_cost - prev_cost > 0)
             {
                 ++t;
@@ -451,25 +456,27 @@ void Placer::calculate_norm_factor(){
     cout << "=================================================" << endl;
 }
 
-double Placer::calculate_total_cost(){
+double Placer::calculate_total_cost(bool check_feasible = false){
     double congestion;
     double wire;
-    calculate_congestion_cost(congestion);
+    bool congest_overflow = calculate_congestion_cost(congestion);
     calculate_wire_length_cost(wire);
     // calculate cost
+    if(check_feasible) set_congest_feasible(congest_overflow);
     double cost_ratio_congest = _congest_feasible_count / _congest_feasible_chain.size();
     // cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
     cost_ratio_congest *= 0.3;
 
     int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
+    movcell_overflow = excess_move_cell > 0;
+    if(check_feasible) set_movecell_feasible(movcell_overflow);
     excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
-    double cost_ratio_move = _movecell_feasible_count / _movecell_feasible_chain.size();
-    // cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move *= 0.3;
+    double cost_ratio_move = double(_movecell_feasible_count) / _movecell_feasible_chain.size();
+    cost_ratio_move *= 0.15;
 
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
-                + excess_move_cell * cost_ratio_move ;
+                + (pow(2, cal_move_cell_num()/_placement->_maxMoveCell)-1) * cost_ratio_move ;
 }
 
 double Placer::calculate_total_cost(double& congestion, double& wire, bool check_feasible = false){
@@ -482,16 +489,26 @@ double Placer::calculate_total_cost(double& congestion, double& wire, bool check
     cost_ratio_congest *= 0.3;
 
     int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
-    bool movcell_overflow = excess_move_cell > 0;
+    movcell_overflow = excess_move_cell > 0;
     if(check_feasible) set_movecell_feasible(movcell_overflow);
     excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
-    double cost_ratio_move = _movecell_feasible_count / _movecell_feasible_chain.size();
-    cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move *= 0.3;
+    double cost_ratio_move = double(_movecell_feasible_count) / _movecell_feasible_chain.size();
+    // cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
+    // cost_ratio_move = (1-cost_ratio_move*1.05 > 0) ? 1e8 : 0.3*log(1-cost_ratio_move*1.05);
+    cost_ratio_move *= 0.15;
+    // cout << wire*_wire_length_norm_factor << " " << (1 - cost_ratio_congest - cost_ratio_move) << "|" << congestion << " " << cost_ratio_congest << "|"
+    //     << (pow(2, cal_move_cell_num()/_placement->_maxMoveCell)-1) << " " << cost_ratio_move << endl;
+    // cout << wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
+    //             + congestion * cost_ratio_congest
+    //             + (pow(2, cal_move_cell_num()/_placement->_maxMoveCell)-1) * cost_ratio_move << endl;
+    //             // exit(-1);
+    // cout << (pow(2, cal_move_cell_num()/_placement->_maxMoveCell)-1) << endl;
+    // if(_iteration_cnt == 2) exit(-1);
 
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
-                + excess_move_cell * cost_ratio_move ;
+                // + excess_move_cell * cost_ratio_move ;
+                + (pow(2, cal_move_cell_num()/_placement->_maxMoveCell)-1) * cost_ratio_move ;
 }
 
 bool Placer::calculate_congestion_cost(double& congestion){
@@ -500,12 +517,14 @@ bool Placer::calculate_congestion_cost(double& congestion){
     // print_congestion();
     bool overflow = false;
     congestion = 0;
+    // int cnt = 0;
     for(int i = 0 ; i < _placement->_boundary_width ; ++i){
         for(int j = 0 ; j < _placement->_boundary_height ; ++j){
             for(int k = 0 ; k < _placement->_numLayers ; ++k){
                 if(_demand[i][j][k] > _supply[i][j][k]){
                     congestion += (_demand[i][j][k] - _supply[i][j][k]) / _supply[i][j][k]; // the overflow ratio
                     overflow = true;
+                    // cout << ++cnt << endl;
                 }
             }
         }
@@ -535,6 +554,7 @@ void Placer::calculate_wire_length_cost(double& wire){
                 // cerr << p2->get_name() << endl;
                 // cerr << "(" << p1->getcellId() << "/" << p1->get_name() << ") (" << p2->getcellId() << "/" << p2->get_name() << ")" << endl;
                 // cerr << "Wire " << abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety()) + abs(p1->get_layer() - p2->get_layer()) << endl;
+                // cerr << abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety()) + abs(p1->get_layer() - p2->get_layer()) << endl;
                 wire_len += abs(c1->getx() - c2->getx()) + abs(c1->gety() - c2->gety()) + abs(p1->get_layer() - p2->get_layer());
             }
             // exit(-1);
@@ -555,7 +575,7 @@ void Placer::init_supply_map(){
         int cur_layer_supply = _placement->layers[i]->get_supply();
         for(int j = 0 ; j < _placement->_boundary_width ; ++j){ // x
             for(int k = 0 ; k < _placement->_boundary_height ; ++k){ // y
-                _supply[j][k][i] = int(cur_layer_supply * 0.9);
+                _supply[j][k][i] = int(cur_layer_supply * 1.4);
             }
         }
     }
@@ -699,23 +719,30 @@ void Placer::print_congestion(){
 #ifdef PRINT_MODE
     print_start("Congestion Map");
 #endif
+    int cnt = 0;
+    int x_range = _placement->_boundary_width;
+    // int x_range = 5;
+    int y_range = _placement->_boundary_height;
+    // int y_range = 5;
     for(int k = 0 ; k < _placement->_numLayers ; ++k){
         cout << "Layer " << k << " [Supply(with 0.2 margin) / Demand / Overflow]" << endl;
-        for(int i = 0 ; i < _placement->_boundary_width ; ++i){
-            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+        for(int i = 0 ; i < x_range ; ++i){
+            for(int j = 0 ; j < y_range ; ++j){
                 cout << setw(5) << setprecision(3) << _supply[i][j][k] << " ";
             }
             cout << " | ";
-            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+            for(int j = 0 ; j < y_range ; ++j){
                 cout << setw(5) << setprecision(3) << _demand[i][j][k] << " ";
             }
             cout << " | ";
-            for(int j = 0 ; j < _placement->_boundary_height ; ++j){
+            for(int j = 0 ; j < y_range ; ++j){
                 cout << setw(5) << setprecision(3) << _supply[i][j][k] - _demand[i][j][k] << " ";
+                if(_supply[i][j][k]/0.9 - _demand[i][j][k]<0) ++cnt;
             }
             cout << '\n';
         }
     }
+    cout << "Total Overflow: " << cnt << endl;
 #ifdef PRINT_MODE
     print_end();
 #endif
