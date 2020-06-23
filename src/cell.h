@@ -14,13 +14,18 @@ class Master
     friend class Cell;
 public:
     // constructor and destructor
-    Master(string name, int numPin, int numBlockage , int id ) : _name(name), _numPin(numPin), _numBlockage(numBlockage) , _id(id){};
+    Master(string name, int numPin, int numBlockage, int id) : _name(name), _numPin(numPin), _numBlockage(numBlockage) , _id(id){};
     ~Master() {};
 
     void add_pin(string name, int layer) {_PinName2Id[name] = _pinArray.size(); _pinArray.push_back(new Pin(name, layer));};
     void add_blockage(int layer, int demand) {_BlockLayers.push_back(layer); _BlockDemand.push_back(demand);};
     void add_adj_demand(int extraId, int layer, int demand) {_adjDemand.push_back(ExtraDemand(extraId, layer, demand));};
     void add_same_demand(int extraId, int layer, int demand) {_sameDemand.push_back(ExtraDemand(extraId, layer, demand));};
+    
+    // access function
+    const vector<ExtraDemand>& get_adjHDemand() { return  _adjDemand;}
+    const vector<ExtraDemand>& get_sameDemand() { return  _sameDemand;}
+    int getId() { return _id;}
 
     //access method 
     vector<int> get_block_layer()  const { return  _BlockLayers; }
@@ -56,6 +61,11 @@ public:
             cpy->_pinArray[i] = new Pin(_pinArray[i]->get_name(), _pinArray[i]->get_layer());
         return cpy;
     }
+    vector<Pin*> get_pinArray(){ return _pinArray;}
+    int get_blockage() {return _numBlockage;};
+    int get_block_layer(int idx) {return _BlockLayers[idx];}
+    int get_block_demand(int idx) {return _BlockDemand[idx];}
+    string get_name() {return _name;};
 
 private:
     string _name;                       // Name of the master cell (MC)
@@ -92,12 +102,15 @@ public:
 
     int setx(int x) {_x = x;};
     int sety(int y) {_y = y;};
+    Master* get_master() {return _type;};
+
+    bool is_movable() {return _isMovable;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x
     int _y;                 // cell coordinate y
     bool _isMovable;        // whether the cell is movable
-    Master* _type;           // the master cell type of this cell
+    Master* _type;          // the master cell type of this cell
 };
 
 #endif  // CELL_H

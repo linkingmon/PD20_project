@@ -18,11 +18,11 @@ C_OBJ     = $(C_SRC:.c=.o)
 
 CC=g++
 LDFLAGS=-std=c++11 -O3 -lm
-SOURCES=src/placement.cpp src/main.cpp src/placer.cpp src/router.cpp src/utils.cpp src/maze_router.cpp flute/flute.c flute/dist.c flute/dl.c flute/err.c flute/heap.c flute/mst2.c flute/neighbors.c \
+SOURCES=src/placement.cpp src/main.cpp src/placer.cpp src/router.cpp src/utils.cpp src/mst.cpp src/maze_router.cpp flute/flute.c flute/dist.c flute/dl.c flute/err.c flute/heap.c flute/mst2.c flute/neighbors.c \
 	flute/bookshelf_IO.c flute/memAlloc.c flute/flute_mst.c 
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=pr
-INCLUDES=src/cell.h src/net.h src/placement.h src/placer.h src/router.h src/utils.h src/struc.h src/congestion.h src/maze_router.h src/MinHeap.h flute/flute.h
+INCLUDES=src/cell.h src/net.h src/placement.h src/placer.h src/router.h src/utils.h src/struc.h src/congestion.h src/mst.h src/myUsage.h src/maze_router.h src/MinHeap.h flute/flute.h
 
 all: $(SOURCES) bin/$(EXECUTABLE)
 

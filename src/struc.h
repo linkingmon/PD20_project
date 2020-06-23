@@ -33,6 +33,11 @@ public:
     ~NonDefault() {};
 
     void print() {cout << "(" << _x << ',' << _y << ',' << _z << "), with supply offset  " << _offset << '\n';};
+    
+    int getx() {return _x;};
+    int gety() {return _y;};
+    int getz() {return _z;};
+    int get_offset() {return _offset;};
 private:
     int _x, _y, _z;     // coordinate of non default supply grid
     int _offset;        // non default supply offset
@@ -43,21 +48,27 @@ class Pin
 {
 public:
     // constructor and destructor
-    Pin(string name, int layer) : _name(name), _layer(layer){};
+    Pin(string name, int layer) : _name(name), _layer(layer), _netId(-1) {};
     ~Pin() {};
     void print() { cout << "(" << _name << "," << _layer << ")";};
-    void print_with_cell() { cout << "(" << _cellId << "/" << _name << "," << _layer << ")";};
+    void print_with_cell() { cout << "(" << _cellId << "/" << _name << "," << _layer << ")onNet" << _netId;};
     void setcellId(int cellid) {_cellId = cellid;};
     
     int getcellId() {return _cellId;};
     int get_layer() {return _layer;};
     string get_name() {return _name;};
+    void addNetId(int Id) {_netId = Id;}
+    int getNetId() {return _netId;}
+
+    void set_deputy(Pin* deputy) {_deputy = deputy;}
+    Pin* get_deputy() {return _deputy;}
 
 private:
     int _cellId;        // the cell id in the cellArray
     int _layer;         // the layer num of the pin
     string _name;       // pin name
-
+    int _netId;
+    Pin* _deputy;       // the deputy for Kruskals MST
 };
 
 class ExtraDemand{

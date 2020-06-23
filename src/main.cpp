@@ -5,10 +5,14 @@
 #include "placer.h"
 #include "router.h"
 #include "utils.h"
+#include "myUsage.h"
 using namespace std;
+
+MyUsage myusage;
 
 int main(int argc, char **argv)
 {
+    myusage.reset();
     fstream input, output;
 
     if (argc == 3)

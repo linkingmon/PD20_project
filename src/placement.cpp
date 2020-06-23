@@ -107,7 +107,9 @@ void Placement::parseInput(fstream &inFile)
         for(int j = 0 ; j < num_pin ; ++j){
             str_list = readline2list(inFile);
             str_list = split(str_list[1], "/");
-            cur_net->addPin(_cellArray[_CellName2Id[str_list[0]]]->getPin(str_list[1]));
+            Pin* cur_pin = _cellArray[_CellName2Id[str_list[0]]]->getPin(str_list[1]);
+            cur_net->addPin(cur_pin);
+            cur_pin->addNetId(i);
         }
         _netArray.push_back(cur_net);
     }
@@ -127,7 +129,7 @@ void Placement::printSummary() const
     cout << endl;
     cout << "==================== Summary ====================" << endl;
     cout << "* Max Cell Move: " << _maxMoveCell << '\n';
-    cout << "* Boundary: (" << _leftBoundary << "," << _bottomBoundary << ") : (" << _rightBoundary << "," << _topBoundary << ")\n";
+    cout << "* Boundary: (" << _leftBoundary << "," << _rightBoundary << ") : (" << _bottomBoundary << "," << _topBoundary << ")\n";
     cout << "* Num of Layers: " << _numLayers << '\n'; 
     for(int i = 0 ; i < _numLayers ; ++i) layers[i]->print();
     cout << "* Num of Non default supply grid: " << _numNonDefault << '\n';
