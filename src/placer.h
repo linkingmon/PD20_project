@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <deque>
 #include "cell.h"
 #include "net.h"
 #include "placement.h"
@@ -79,15 +80,11 @@ private:
     void calculate_norm_factor();
 
     // cost function related
-    int _feasible_chain_size = 100;
-    vector<bool> _feasible_chain;
-    double _beta; // history cost
-    int _feasible_count; // history cost
     void set_feasible(bool feasible);
     int cal_net_cost(Net* cur_net);
-    void calculate_congestion_cost(double& congestion);
+    bool calculate_congestion_cost(double& congestion);
     void calculate_wire_length_cost(double& wire);
-    double calculate_total_cost(double& congestion, double& wire);
+    double calculate_total_cost(double& congestion, double& wire, bool check_feasible);
     double calculate_total_cost();
     vector<int> _netlength;
     vector<MST*> _msts;
@@ -96,6 +93,14 @@ private:
     void adjH_incremental_update(Cell* cur_cell, bool inc);
     void record_cell_place();
     double cal_move_cell_num();
+    void set_congest_feasible(bool feasible);
+    void set_movecell_feasible(bool feasible);
+    deque<bool> _congest_feasible_chain;
+    deque<bool> _movecell_feasible_chain;
+    int _congest_feasible_count;
+    int _movecell_feasible_count;
+    int _congest_feasible_chain_size = 100;
+    int _movecell_feasible_chain_size = 100;
 
     // SA partial recovery
     int _perturb_type;

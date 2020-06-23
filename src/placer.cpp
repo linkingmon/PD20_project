@@ -33,6 +33,12 @@ Placer::Placer(Placement * placement)  : _placement(placement) {
     record_cell_place();
     // init fix Cell list
     init_fixCell_list();
+    // init history chain
+    _congest_feasible_count = 0;
+    _movecell_feasible_count = 0;
+    // initialize the feasible chain with one false
+    _congest_feasible_chain.push_back(false);
+    _movecell_feasible_chain.push_back(false);
 }
 
 void Placer::place(){
@@ -43,7 +49,7 @@ void Placer::place(){
     // calculate the normalize factor of congestion and wirelength (highly congested condition will not be present in random floorplan with high probalbility)
     calculate_norm_factor();
     recover_best_solution();
-    _best_cost = calculate_total_cost(_best_congestion, _best_wire);
+    _best_cost = calculate_total_cost(_best_congestion, _best_wire, false);
     // print_congestion();
 
     // specify prameters
@@ -116,8 +122,6 @@ double Placer::SA_iteration()
     _reject_num = 0;
     _uphill_num = 0;
     _move_num = 0;
-    // initialize the feasible chain with one false
-    _feasible_chain.push_back(false);
     double avg_cost = 0;
     do
     {
@@ -127,8 +131,7 @@ double Placer::SA_iteration()
 
         double wire;
         double congestion;
-        _beta = 1 - _feasible_count / _feasible_chain.size();
-        cur_cost = calculate_total_cost(congestion, wire);
+        cur_cost = calculate_total_cost(congestion, wire, true);
         double d_cost = cur_cost - prev_cost;
         avg_cost += d_cost;
         float p = 1 / (exp(d_cost / cur_temperature)); // probapility for uphill move
@@ -454,55 +457,61 @@ double Placer::calculate_total_cost(){
     calculate_congestion_cost(congestion);
     calculate_wire_length_cost(wire);
     // calculate cost
-    _beta = 0;
-    double cost_ratio_congest = 0.5 + (1 - _beta);
-    cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
-    cost_ratio_congest = 0.3;
+    double cost_ratio_congest = _congest_feasible_count / _congest_feasible_chain.size();
+    // cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
+    cost_ratio_congest *= 0.3;
 
-    double cost_ratio_move = 0.5 + (1 - _beta);
-    cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move = 0.3;
     int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
     excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
-    // why congestion is inf
-    return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
-                + congestion * cost_ratio_congest
-                + excess_move_cell * cost_ratio_move;
-}
+    double cost_ratio_move = _movecell_feasible_count / _movecell_feasible_chain.size();
+    // cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
+    cost_ratio_move *= 0.3;
 
-double Placer::calculate_total_cost(double& congestion, double& wire){
-    calculate_congestion_cost(congestion);
-    calculate_wire_length_cost(wire);
-    // calculate cost
-    _beta = 0;
-    double cost_ratio_congest = 0.5 + (1 - _beta);
-    cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
-    cost_ratio_congest = 0.3;
-
-    double cost_ratio_move = 0.5 + (1 - _beta);
-    cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
-    cost_ratio_move = 0.3;
-    int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
-    excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
     return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
                 + congestion * cost_ratio_congest
                 + excess_move_cell * cost_ratio_move ;
 }
 
-void Placer::calculate_congestion_cost(double& congestion){
+double Placer::calculate_total_cost(double& congestion, double& wire, bool check_feasible = false){
+    bool congest_overflow = calculate_congestion_cost(congestion);
+    calculate_wire_length_cost(wire);
+    // calculate cost
+    if(check_feasible) set_congest_feasible(congest_overflow);
+    double cost_ratio_congest = _congest_feasible_count / _congest_feasible_chain.size();
+    // cost_ratio_congest = cost_ratio_congest > 0.9 ? 0.9 : cost_ratio_congest;
+    cost_ratio_congest *= 0.3;
+
+    int excess_move_cell = cal_move_cell_num() - _placement->_maxMoveCell;
+    bool movcell_overflow = excess_move_cell > 0;
+    if(check_feasible) set_movecell_feasible(movcell_overflow);
+    excess_move_cell = (excess_move_cell > 0) ? excess_move_cell : 0;
+    double cost_ratio_move = _movecell_feasible_count / _movecell_feasible_chain.size();
+    cost_ratio_move = cost_ratio_move > 0.9 ? 0.9 : cost_ratio_move;
+    cost_ratio_move *= 0.3;
+
+    return wire * (1 - cost_ratio_congest - cost_ratio_move) * _wire_length_norm_factor 
+                + congestion * cost_ratio_congest
+                + excess_move_cell * cost_ratio_move ;
+}
+
+bool Placer::calculate_congestion_cost(double& congestion){
     // add all the overflow grid values
     // print_mcell_list();
     // print_congestion();
+    bool overflow = false;
     congestion = 0;
     for(int i = 0 ; i < _placement->_boundary_width ; ++i){
         for(int j = 0 ; j < _placement->_boundary_height ; ++j){
             for(int k = 0 ; k < _placement->_numLayers ; ++k){
-                if(_demand[i][j][k] > _supply[i][j][k])
+                if(_demand[i][j][k] > _supply[i][j][k]){
                     congestion += (_demand[i][j][k] - _supply[i][j][k]) / _supply[i][j][k]; // the overflow ratio
+                    overflow = true;
+                }
             }
         }
     }
     congestion /= (_placement->_boundary_width * _placement->_boundary_height * _placement->_numLayers);
+    return overflow;
 }
 
 void Placer::calculate_wire_length_cost(double& wire){
@@ -888,4 +897,34 @@ void Placer::init_fixCell_list(){
     for(int i = 0 ; i < _placement->_numCells ; ++i){
         if(_placement->_cellArray[i]->is_movable()) _fixCell_list.push_back(i);
     }
+}
+
+void Placer::set_congest_feasible(bool feasible)
+{
+
+    if (_congest_feasible_chain.size() > _congest_feasible_chain_size)
+    {
+        if (_congest_feasible_chain.front() == true)
+            --_congest_feasible_count;
+        _congest_feasible_chain.pop_front();
+    }
+    _congest_feasible_chain.push_back(feasible);
+    if (feasible)
+        ++_congest_feasible_count;
+    return;
+}
+
+void Placer::set_movecell_feasible(bool feasible)
+{
+
+    if (_movecell_feasible_chain.size() > _movecell_feasible_chain_size)
+    {
+        if (_movecell_feasible_chain.front() == true)
+            --_movecell_feasible_count;
+        _movecell_feasible_chain.pop_front();
+    }
+    _movecell_feasible_chain.push_back(feasible);
+    if (feasible)
+        ++_movecell_feasible_count;
+    return;
 }
