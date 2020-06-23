@@ -11,16 +11,16 @@ using namespace std;
 // 2D projection
 // expansion check
 // stenier structrue check 
-// congestion map update when path is determined (add/exclude)
-
+// congestion map update when path is determined (add/exclude) check
+// layer assignment
 
 void Router::route(){
     
     cout << "Routing ..." << endl;
-    cout<<(*row_map)(2,3,1)<<endl;
+    // cout<<(*row_map)(2,3,1)<<endl;
 
-    row_map->print_congestion();
-    col_map->print_congestion();
+    cost_row_map->print_congestion();
+    cost_col_map->print_congestion();
     
     construct_grid_map();
     construct_supply_demand_map();
@@ -32,15 +32,15 @@ void Router::route(){
     x_expand_result.resize(_placement->_boundary_width);
     y_expand_result.resize(_placement->_boundary_height);
     
-    Shortest_Path test( 1, 1, 0, 3, 3, 0, 1, row_map, col_map, demand_grid_map );
+    construct_congestion_map();
+    // Shortest_Path test( 1, 1, 0, 3, 3, 0, 1, cost_row_map, cost_col_map, demand_grid_map );
     // Shortest_Path(int s_x , int s_y , int s_z , int t_x , int t_y , int t_z , double a_factor, 
     //     Congestion_Row* r_map , Congestion_Col* c_map , Congestion* g_map )
     //     :source_x(s_x), source_y(s_y) , source_z(s_z) , target_x(t_x) , target_y(t_y) , target_z(t_z),
     // expand_factor(a_factor), row_map(r_map), col_map(c_map), grid_map(g_map)
-    test.Dijkstra();
-    test.Build_the_path();
+    // test.Dijkstra();
+    // test.Build_the_path();
     
-    construct_total_two_pin_net(true);
     
 }
 
@@ -49,8 +49,8 @@ void Router::construct_grid_map(){
     int height = _placement->_boundary_height;
     int MCell_num = _placement->_numMasterCell;
     int cell_num = _placement->_numCells;
-    int norm_x_factor = _placement->_bottomBoundary;
-    int norm_y_factor = _placement->_leftBoundary;
+    int norm_x_factor = _placement->_leftBoundary;
+    int norm_y_factor = _placement->_bottomBoundary;
 
     // initial Grid
     for(size_t x = 0 ; x < width ; x++){
@@ -191,6 +191,106 @@ void Router::two_pin_net_L_routing(Pin* a  , Pin* b){
 
     twopin_netlist_L.push_back(L_net);
     
+}
+
+void Router::two_pin_net_Both_L_routing( two_pin_net<int>* a , bool first_round){
+
+    branch<int>* branch_a = a->b_source;
+    branch<int>* branch_b = a->b_target;
+    // two_pin_net<int>* L_net = new two_pin_net<int>(branch_a,branch_b);
+    int a_x = branch_a->_x;
+    int a_y = branch_a->_y;
+    int a_z = branch_a->_z;
+    int b_x = branch_b->_x;
+    int b_y = branch_b->_y;
+    int b_z = branch_b->_z;
+    int z = 0;
+    
+    // cout<<"a: "<<a_x<<" "<<a_y<<" "<<endl;
+    // cout<<"b: "<<b_x<<" "<<b_y<<" "<<endl;
+    Bend* sink = new Bend(a_x,a_y,z); 
+    Bend* target = new Bend(b_x,b_y,z);
+    if(a_x == b_x){
+        sink->set_next(target);
+        if(first_round){
+            Add_demand(sink,1);
+            delete sink;
+            delete target;
+            return;
+        }
+        else{
+            Exclude_demand(sink,1);
+            return;
+        }
+    }
+    if(a_y == b_y){
+        sink->set_next(target);
+        if(first_round){
+            Add_demand(sink,1);
+            delete sink;
+            delete target;
+            return;
+        }
+        else{
+            Exclude_demand(sink,1);
+            return;
+        }
+    }
+    if(first_round){
+        // H -> V
+        Bend* H_bend = new Bend(b_x,a_y,z);
+        sink->set_next(H_bend);
+        H_bend->set_next(target);
+        Add_demand(sink,0.5);
+        
+        // V -> H
+        Bend* V_bend = new Bend(a_x,b_y,z);
+        sink->set_next(V_bend);
+        V_bend->set_next(target);
+        Add_demand(sink,0.5);
+        delete sink;
+        delete H_bend;
+        delete V_bend;
+        delete target;
+    }
+    else{
+        // H -> V
+        Bend* H_bend = new Bend(b_x,a_y,z);
+        sink->set_next(H_bend);
+        H_bend->set_next(target);
+        Exclude_demand(sink,0.5);
+        
+        // V -> H        
+        sink = new Bend(a_x,a_y,z); 
+        target = new Bend(b_x,b_y,z);
+        Bend* V_bend = new Bend(a_x,b_y,z);
+        sink->set_next(V_bend);
+        V_bend->set_next(target);
+        Exclude_demand(sink,0.5);
+    }
+}
+
+void Router::two_pin_net_L_routing( two_pin_net<int>* a ){
+
+    branch<int>* branch_a = a->b_source;
+    branch<int>* branch_b = a->b_target;
+    // two_pin_net<int>* L_net = new two_pin_net<int>(branch_a,branch_b);
+    int a_x = branch_a->_x;
+    int a_y = branch_a->_y;
+    int a_z = branch_a->_z;
+    int b_x = branch_b->_x;
+    int b_y = branch_b->_y;
+    int b_z = branch_b->_z;
+    int z = 0;
+
+
+    Bend* sink = new Bend(a_x,a_y,z); 
+    
+    Bend* L_bend = L_route_2D(a_x,b_x,a_y,b_y,z);
+    sink->set_next(L_bend);
+    L_bend->set_prev(sink);
+    a->set_source(sink);
+    // twopin_netlist_L.push_back(L_net);
 }
 
 void Router::two_pin_net_Z_routing(Pin*a , Pin*b){
@@ -396,7 +496,7 @@ double Router::V_route_edge(size_t x , size_t y1, size_t y2 , size_t z ){
     if(y1 > y2)
         swap(y1,y2);
     for(size_t y = y1; y < y2 ; y++){
-        h_cost += (*row_map)(x,y,z);
+        h_cost += (*cost_row_map)(x,y,z);
         cout<<x<<" "<<y<<" "<<z<<endl;
         // cout<<h_cost<<endl;
     }
@@ -424,7 +524,7 @@ double Router::V_route_grid(size_t x , size_t y1, size_t y2 , size_t z ){
     if(y1 > y2)
         swap(y1,y2);
     for(size_t y = y1; y < y2 ; y++){
-        h_cost += (*row_map)(x,y,z);
+        h_cost += (*cost_row_map)(x,y,z);
         cout<<x<<" "<<y<<" "<<z<<endl;
         // cout<<h_cost<<endl;
     }
@@ -440,7 +540,7 @@ double Router::H_route_edge(size_t x1 , size_t x2, size_t y , size_t z ){
         swap(x1,x2); 
     for(size_t x = x1; x < x2 ; x++){
         cout<<x<<" "<<y<<" "<<z<<endl;
-        v_cost += (*col_map)(x,y,z);
+        v_cost += (*cost_col_map)(x,y,z);
     }
     cout<<"vertival cost"<<v_cost<<endl;
     return v_cost;
@@ -454,7 +554,7 @@ double Router::H_route_grid(size_t x1 , size_t x2, size_t y , size_t z ){
         swap(x1,x2); 
     for(size_t x = x1; x < x2 ; x++){
         cout<<x<<" "<<y<<" "<<z<<endl;
-        v_cost += (*col_map)(x,y,z);
+        v_cost += (*cost_col_map)(x,y,z);
     }
     cout<<"vertival cost"<<v_cost<<endl;
     return v_cost;
@@ -475,8 +575,6 @@ Tree Router::Flute_function(vector<double> a, vector<double> b){
     double* x = &a[0];
     double* y = &b[0];
 
-    readLUT();
-
     flutetree = flute(d, x, y, ACCURACY);
     printf("FLUTE wirelength = %lf\n", flutetree.length);
     printtree(flutetree);
@@ -492,15 +590,25 @@ void Router::construct_two_pin_net( Net* a, int idx){
     vector<double> x,y;
     x.resize(pin_num);
     y.resize(pin_num);
+    int norm_x_factor = _placement->_leftBoundary;
+    int norm_y_factor = _placement->_bottomBoundary;
     for(size_t j = 0 ; j < pin_num ; j++){
         Cell* c = _placement->getCell( a->getPin(j)->getcellId());
-        x[j] = c->getx();
-        y[j] = c->gety();
+        x[j] = c->getx() - norm_x_factor;
+        y[j] = c->gety() - norm_y_factor;
+    }
+    if( pin_num <= 2){
+        int z = 0;
+        branch<int>* b1 = new branch<int>( x[0], y[0], z ); 
+        branch<int>* b2 = new branch<int>( x[1], y[1], z );
+        two_pin_net<int> tp_net(b1,b2);
+        two_pin_netlist[idx].push_back(tp_net);
+        return;
     }
     Tree t = Flute_function(x,y);    
     int i;
     double p1_x,p1_y,p2_x,p2_y;
-    two_pin_net<double> tp_net;
+    two_pin_net<int> tp_net;
     for (i=0; i<t.deg; i++){
         p1_x = t.branch[i].x;
         p1_y = t.branch[i].y;
@@ -510,9 +618,9 @@ void Router::construct_two_pin_net( Net* a, int idx){
         p2_y = t.branch[n].y;
         if( p1_x == p2_x && p2_x == p2_y) continue;
         double z = 0;
-        branch<double>* b1 = new branch<double>( p1_x, p1_y, z ); 
-        branch<double>* b2 = new branch<double>( p2_x, p2_y, z );
-        two_pin_net<double> tp_net(b1,b2);
+        branch<int>* b1 = new branch<int>( p1_x, p1_y, z ); 
+        branch<int>* b2 = new branch<int>( p2_x, p2_y, z );
+        two_pin_net<int> tp_net(b1,b2);
         two_pin_netlist[idx].push_back(tp_net);
     }
 
@@ -531,10 +639,18 @@ void Router::construct_two_pin_net_with_expansion(Net*a ,int idx){
         y[j] = c->gety(); 
         y[j] *= y_expand_result[y[j]];
     }
+    // if( pin_num <= 2){
+    //     double z = 0;
+    //     branch<int>* b1 = new branch<int>( x[0], y[0], z ); 
+    //     branch<int>* b2 = new branch<int>( x[1], y[1], z );
+    //     two_pin_net<int> tp_net(b1,b2);
+    //     two_pin_netlist[idx].push_back(tp_net);
+    //     return;
+    // }
     Tree t = Flute_function(x,y);    
     int i;
     double p1_x,p1_y,p2_x,p2_y;
-    two_pin_net<double> tp_net;
+    two_pin_net<int> tp_net;
     for (i=0; i<t.deg; i++){
         p1_x = t.branch[i].x;
         p1_x = find_expand_x_position(p1_x);
@@ -547,10 +663,10 @@ void Router::construct_two_pin_net_with_expansion(Net*a ,int idx){
         p2_y = t.branch[n].y;
         p2_y = find_expand_y_position(p2_y);
         if( p1_x == p2_x && p2_x == p2_y) continue;
-        double z = 0;
-        branch<double>* b1 = new branch<double>( p1_x, p1_y, z ); 
-        branch<double>* b2 = new branch<double>( p2_x, p2_y, z );
-        two_pin_net<double> tp_net(b1,b2);
+        int z = 0;
+        branch<int>* b1 = new branch<int>( p1_x, p1_y, z ); 
+        branch<int>* b2 = new branch<int>( p2_x, p2_y, z );
+        two_pin_net<int> tp_net(b1,b2);
         two_pin_netlist[idx].push_back(tp_net);
     }
     
@@ -559,6 +675,7 @@ void Router::construct_two_pin_net_with_expansion(Net*a ,int idx){
 void Router::construct_total_two_pin_net(bool expand){
     two_pin_netlist.clear();
     two_pin_netlist.resize(_placement->_numNets);
+    readLUT();
     if(expand == false){
         for(int i = 0 ; i < _placement->_numNets ; i++){
             construct_two_pin_net( _placement->_netArray[i], i );
@@ -611,3 +728,87 @@ int Router::find_expand_y_position(double y){
             left = middle + 1;
     }
 }
+
+void Router::Add_demand(Bend* start, double f){        //2D
+    Bend* trav = start;                 //traverse
+    Bend* n_trav = trav->get_next();    //next traverse
+    while(n_trav != NULL){
+        if(trav->_x == n_trav->_x){         //Vertical
+            Add_demand_V(trav->_x, trav->_y, n_trav->_y, 0, f);
+        }
+        else if(trav->_y == n_trav->_y){    //Horizontal
+            Add_demand_H(trav->_x, n_trav->_x , trav->_y, 0, f);
+        }
+        trav = n_trav;
+        n_trav = trav->get_next();
+    }
+}
+
+void Router::Add_demand_H( int x1, int x2, int y, int z, double f){
+    if(x1 > x2) 
+        swap(x1,x2); //make x1 < x2
+    for(int x = x1; x < x2; x++){
+        (*demand_row_map)(x,y,z) += f;
+    }
+}
+
+void Router::Add_demand_V( int x, int y1, int y2, int z, double f){
+    if(y1 > y2) 
+        swap(y1,y2); //make y1 < y2
+    for(int y = y1; y < y2; y++){
+        (*demand_col_map)(x,y,z) += f;
+    }
+}
+
+void Router::Exclude_demand(Bend* start, double f){        //2D and we need remove the bend
+    Bend* trav = start;                 //traverse
+    Bend* n_trav = trav->get_next();    //next traverse
+    while(n_trav != NULL){
+        if(trav->_x == n_trav->_x){   //Vertical
+            Exclude_demand_V(trav->_x, trav->_y, n_trav->_y, 0, f);
+        }
+        else if(trav->_y == n_trav->_y){    //Horizontal
+            Exclude_demand_H(trav->_x, n_trav->_x , trav->_y, 0, f);
+        }
+        delete trav;
+        trav = n_trav;
+        n_trav = trav->get_next();
+    }
+}
+
+void Router::Exclude_demand_H( int x1, int x2, int y, int z, double f){
+    if(x1 > x2) 
+        swap(x1,x2); //make x1 < x2
+    for(int x = x1; x < x2; x++){
+        (*demand_row_map)(x,y,z) -= f;
+    }
+}
+
+void Router::Exclude_demand_V( int x, int y1, int y2, int z, double f){
+    if(y1 > y2) 
+        swap(y1,y2); //make y1 < y2
+    for(int y = y1; y < y2; y++){
+        (*demand_col_map)(x,y,z) -= f;
+    }
+}
+
+void Router::construct_congestion_map(){
+    construct_total_two_pin_net(false);
+    bool first_round = true;
+    // add demand
+    for(int i = 0; i < two_pin_netlist.size() ; i++){
+        for(int j = 0 ; j < two_pin_netlist[i].size() ; j++){
+            two_pin_net_Both_L_routing( &two_pin_netlist[i][j] , first_round);
+        }
+    }
+    // cout<<"demand added"<<endl;
+    first_round = false;
+    for(int i = 0; i < two_pin_netlist.size() ; i++){
+        for(int j = 0 ; j < two_pin_netlist[i].size() ; j++){
+            two_pin_net_Both_L_routing( &two_pin_netlist[i][j] , first_round);
+            two_pin_net_L_routing( &two_pin_netlist[i][j] );
+        }
+    }
+}
+
+//supply demand cost map

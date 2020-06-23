@@ -31,6 +31,7 @@ public:
 template<class data>
 class two_pin_net
 {
+    friend class Router;
 public:
     two_pin_net(branch<data>* a, branch<data>* b) : b_source(a), b_target(b){}
     two_pin_net() {}
@@ -50,12 +51,6 @@ private:
     Bend* source; //staring point
 
 };
-//to do list
-//2D L routing ( only two path ) done 
-//2D Z routing ( BFS serach ) done 
-//congestion map visualization
-//3D Z routing ( only six path )
-//congestion supply and demand map construction
 
 class Grid
 {
@@ -107,8 +102,13 @@ public:
         demand_grid_map = new Congestion( width,height,layer );
         
         layer = 1;
-        row_map = new Congestion_Row( width,height,layer );
-        col_map = new Congestion_Col( width,height,layer );
+        supply_row_map = new Congestion_Row( width,height,layer );
+        demand_row_map = new Congestion_Row( width,height,layer );
+        cost_row_map = new Congestion_Row( width,height,layer );
+        supply_col_map = new Congestion_Col( width,height,layer );
+        demand_col_map = new Congestion_Col( width,height,layer );
+        cost_col_map = new Congestion_Col( width,height,layer );
+
 
     }
     ~Router()
@@ -117,6 +117,8 @@ public:
     }
     void two_pin_net_L_routing(Pin* , Pin* );           // perform L routing in 2D plane with two pin
     void two_pin_net_Z_routing(Pin* , Pin* );           // perform Z routing in 2D plane with two pin
+    void two_pin_net_Both_L_routing(two_pin_net<int>*,bool);
+    void two_pin_net_L_routing(two_pin_net<int>*);
     Bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z );     // perform L routing in 2D plane
     Bend* Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z);        // perform Z routing in 2D plane
     double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
@@ -135,7 +137,6 @@ public:
     void construct_grid_map();
     void maze_routing();
     void A_star_search_routing();
-    void route() ;
     Tree Flute_function(vector<double> , vector<double> );
     void expansion();
     void update_x_expansion(int , double);
@@ -145,13 +146,21 @@ public:
     void construct_two_pin_net( Net* , int );
     void construct_two_pin_net_with_expansion(Net*, int);
     void construct_total_two_pin_net(bool);
-   
+    void Add_demand( Bend* , double );
+    void Add_demand_H(int,int,int,int,double);
+    void Add_demand_V(int,int,int,int,double);
+    void Exclude_demand( Bend* , double );
+    void Exclude_demand_H(int,int,int,int,double);
+    void Exclude_demand_V(int,int,int,int,double);
+    // main function
+    void route() ;
+    void construct_congestion_map();
 private:
     Placement * _placement;
     vector<two_pin_net<int>*> twopin_netlist_L;
     vector<two_pin_net<int>*> twopin_netlist_Z;
-    Congestion_Row* row_map;            //congestion of row
-    Congestion_Col* col_map;            //congestion of column
+    Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map;            //congestion of row
+    Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map;            //congestion of column
     Congestion* supply_grid_map;        //supply of total grid
     Congestion* demand_grid_map;        //demand of total grid
     vector<vector<Grid*>> grid_map;     //grid map include cell information 
@@ -159,7 +168,7 @@ private:
     vector<double> x_expand_result;     //expansion result of x
     vector<double> y_expand_factor;     //expansion factor of y
     vector<double> y_expand_result;     //expansion result of y
-    vector<vector<two_pin_net<double>>> two_pin_netlist;
+    vector<vector<two_pin_net<int>>> two_pin_netlist;
     
     // Clean up Router
     void clear();

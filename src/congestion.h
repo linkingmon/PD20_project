@@ -50,7 +50,7 @@ public:
                 cout<<"Row"<<j+1<<" ";
                 for(size_t k = 0; k < Col ; k++){
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
-                    cout<<setw(5)<<cong_map_3D[i][k][j];
+                    cout<<setw(5)<<cong_map_3D[i][j][k];
                 }
                 cout<<endl;
             }
@@ -84,7 +84,7 @@ public:
     }
 
     double& block_to_edge_p(size_t x, size_t y , size_t z){         //positive direction in Row
-        if( y >= Col ){
+        if( x >= Col ){
             cerr<<"wrong positive direction in Horizontal"<<endl;
             exit(0);
         }
@@ -93,7 +93,7 @@ public:
     }
     
     double& block_to_edge_n(size_t x, size_t y , size_t z){         //negative direction in Row
-        if( y > Col || y <= 0 ){
+        if( x > Col || x <= 0 ){
             cerr<<"wrong negative direction in Horizontal"<<endl;
             exit(0);
         }
@@ -114,7 +114,7 @@ public:
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
                     // cong_map_3D[j][k][i] = 1;
                     z++;
-                    cout<<setw(5)<<cong_map_3D[j][k][i];
+                    cout<<setw(5)<<cong_map_3D[k][j][i];
                 }
                 cout<<endl;
             }
@@ -148,7 +148,7 @@ public:
     }
 
     double& block_to_edge_p(size_t x, size_t y , size_t z){     //positive direction in Col
-        if( x >= Row  || x < 0 ){
+        if( y >= Row  || y < 0 ){
             cerr<<"wrong positive direction in Vertical"<<endl;
             exit(0);
         }
@@ -158,12 +158,12 @@ public:
 
     
     double& block_to_edge_n(size_t x, size_t y , size_t z){     //negative direction in Col
-        if( x > Row  || x <= 0 ){
+        if( y > Row  || y <= 0 ){
             cerr<<"wrong negative direction in Vertical"<<endl;
             exit(0);
         }
         // return cong_map.at( z * Row * Col + y + (x-1) * Col);
-        return cong_map_3D[x-1][y][z];
+        return cong_map_3D[x][y-1][z];
     }
 
     void print_congestion(){
@@ -182,7 +182,7 @@ public:
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
                     // cong_map_3D[j][k][i] = z;
                     z++;
-                    cout<<setw(5)<<cong_map_3D[j][k][i];
+                    cout<<setw(5)<<cong_map_3D[k][j][i];
                 }
                 cout<<endl;
             }
