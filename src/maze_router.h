@@ -83,6 +83,7 @@ public:
     void Build_the_path();
     void Build_the_path_old();
     Coordinate* End_point();
+    Bend* target() { return target_bend;}
     int Estimate_distance_to_target(int,int);       // function of estimate distance to target
 private:
     int num_vertex;

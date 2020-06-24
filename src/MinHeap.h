@@ -165,7 +165,7 @@ template <class Data>
 class MinHeap_pointer
 {
 public:
-    MinHeap_pointer(size_t s = 0) { if (s != 0) _data.reserve(s); }
+    MinHeap_pointer(size_t s = 0) { _data.clear(); if (s != 0) _data.reserve(s); }
     MinHeap_pointer(vector<Data*> &a):_data(a){ build_min_heap();}
     ~MinHeap_pointer() {}
 

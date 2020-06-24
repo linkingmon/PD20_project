@@ -46,9 +46,17 @@ void Shortest_Path::Set_boundary(){
     bottom_bound = source_y < target_y ? source_y : target_y;
     right_bound = source_x > target_x ? source_x : target_x;;
     top_bound = source_y > target_y ? source_y : target_y;
-    height = top_bound - left_bound + 1;
-    width = top_bound - bottom_bound + 1;
+    height = top_bound - bottom_bound + 1;
+    width = right_bound - left_bound + 1;
 
+    if(height == 1){
+        height = 3;
+        bottom_bound = max(0,bottom_bound-1);
+    }
+    if(width == 1){
+        width = 3;
+        left_bound = max(0,left_bound-1);
+    }
 
 
 }
@@ -493,13 +501,18 @@ void Shortest_Path::Build_the_path(){
     target_bend = target_bend -> get_next();
     if( target_bend == NULL){
         cerr << "QAQ"<<endl;
-        exit(-1);
+        // exit(-1);
     }
-    target_bend -> set_prev(NULL);
-    return;
+    // target_bend -> set_prev(NULL);
+    // return;
     
     n_bend = new Bend(temp->x, temp->y, temp->z ,cur_bend);
     cur_bend -> set_next( n_bend );
     n_bend -> print();
 
+    for( int i = 0 ; i < grid_point_pointer.size(); i++){
+        for( int j = 0; j < grid_point_pointer[i].size(); j++){
+            delete grid_point_pointer[i][j];
+        }
+    }
 }

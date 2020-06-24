@@ -21,11 +21,13 @@ template<class data>
 class branch{
 public:
     branch() {}
-    branch(data x, data y, data z ,data n = 0):_x(x),_y(y),_z(z),_n(n){}
+    branch(data x, data y, data z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n){}
     data _x;     //row index
     data _y;     //column index
     data _z;     //layer index
-    data _n;     //neighbor
+    int  _n;     //neighbor
+    int  _id;    //index
+    bool operator == (branch<data> a) {return (_x == a._x && _y == a._y); }
 };
 
 template<class data>
@@ -98,7 +100,6 @@ public:
         grid_map = vector<vector<Grid*>>( width, vector<Grid*>(height) );
 
         supply_grid_map = new Congestion( width,height,layer );
-        // supply_grid_map = new Congestion( 1,1,1 );
         demand_grid_map = new Congestion( width,height,layer );
         
         layer = 1;
@@ -109,6 +110,8 @@ public:
         demand_col_map = new Congestion_Col( width,height,layer );
         cost_col_map = new Congestion_Col( width,height,layer );
 
+        supply_grid_2Dmap = new Congestion( width,height,layer );
+        demand_grid_2Dmap = new Congestion( width,height,layer );
 
     }
     ~Router()
@@ -152,24 +155,35 @@ public:
     void Exclude_demand( Bend* , double );
     void Exclude_demand_H(int,int,int,int,double);
     void Exclude_demand_V(int,int,int,int,double);
+    void projection_to_2D();
+    void supply_from_grid_to_edge();
+    int  layer_assignment_straight_line(Bend* , Bend*, int);
+    void layer_assignment_one_net(int);
+    
     // main function
     void route() ;
     void construct_congestion_map();
+    void layer_assignment();
+
+    //ouput
+    void write_result_to_cmd();
+    void write_result(int);
+    
 private:
     Placement * _placement;
     vector<two_pin_net<int>*> twopin_netlist_L;
     vector<two_pin_net<int>*> twopin_netlist_Z;
     Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map;            //congestion of row
     Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map;            //congestion of column
-    Congestion* supply_grid_map;        //supply of total grid
-    Congestion* demand_grid_map;        //demand of total grid
+    Congestion* supply_grid_map, * supply_grid_2Dmap;        //supply of total grid
+    Congestion* demand_grid_map, * demand_grid_2Dmap;       //demand of total grid
     vector<vector<Grid*>> grid_map;     //grid map include cell information 
     vector<double> x_expand_factor;     //expansion factor of x
     vector<double> x_expand_result;     //expansion result of x
     vector<double> y_expand_factor;     //expansion factor of y
     vector<double> y_expand_result;     //expansion result of y
     vector<vector<two_pin_net<int>>> two_pin_netlist;
-    
+    vector<vector<branch<int>*>> branch_of_netlist;
     // Clean up Router
     void clear();
 };
