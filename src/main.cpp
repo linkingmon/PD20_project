@@ -5,14 +5,10 @@
 #include "placer.h"
 #include "router.h"
 #include "utils.h"
-#include "myUsage.h"
 using namespace std;
-
-MyUsage myusage;
 
 int main(int argc, char **argv)
 {
-    myusage.reset();
     fstream input, output;
 
     if (argc == 3)
@@ -46,7 +42,7 @@ int main(int argc, char **argv)
     // running placment
     print_start("Run placement");
     Placer *placer = new Placer(placement);
-    // placer->place();
+    placer->place();
     print_end();
 
     // running routing
