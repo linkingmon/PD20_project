@@ -90,7 +90,7 @@ void Placer::place(){
     print_temp();
 #endif
         avg_cost = SA_iteration();
-        if(_iteration_cnt > _best_iteration + 20)
+        if(_iteration_cnt > _best_iteration + 10)
             break;
     }
     print_end();
