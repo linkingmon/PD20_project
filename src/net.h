@@ -14,9 +14,9 @@ public:
     // basic access methods
     string getName()            const { return _name;       }
     vector<Pin*> getPinArray()  const { return _pinArray;   }
-    Pin* getPin(int i)              const { return _pinArray[i];}
+    Pin* getPin(int i)          const { return _pinArray[i];}
     int  getPin_num()           const { return _numPin;     }
-
+    int  getMinLayer()                   { return _minLayer;  }
     // modify methods
     void addPin(Pin* new_pin)  { _pinArray.push_back(new_pin); }
 
