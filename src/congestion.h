@@ -75,7 +75,7 @@ public:
     :Col(x-1),Row(y), Layer(z){
         // cong_map.resize( x * (y-1) * z );
         // vectorM
-        cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y , vector<double>(z,1)) );
+        cong_map_3D = vector<vector<vector<double>>> ( x-1 , vector<vector<double>>(y , vector<double>(z,1)) );
     }
 
     double& operator() (size_t x , size_t y, size_t z ){
@@ -139,7 +139,7 @@ public:
     Congestion_Col(size_t x , size_t y , size_t z)
     :Col(x), Row(y-1), Layer(z){
         // cong_map.resize( (x-1) * y * z );
-        cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y , vector<double>(z,1)) );
+        cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y-1 , vector<double>(z,1)) );
     }
 
     double& operator() (size_t x , size_t y, size_t z ){
