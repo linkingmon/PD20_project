@@ -28,6 +28,7 @@ public:
     int  _n;     //neighbor
     int  _id;    //index
     bool operator == (branch<data> a) {return (_x == a._x && _y == a._y); }
+    friend ostream& operator<<(ostream& os, const branch& a){ os<< "("<< a._x <<","<<a._y<<","<<a._z<<")   index: "<<a._id<<" neighbor: "<<a._n; return os;}
 };
 
 template<class data>
@@ -105,10 +106,10 @@ public:
         layer = 1;
         supply_row_map = new Congestion_Row( width,height,layer );
         demand_row_map = new Congestion_Row( width,height,layer );
-        cost_row_map = new Congestion_Row( width,height,layer );
+        cost_row_map =   new Congestion_Row( width,height,layer );
         supply_col_map = new Congestion_Col( width,height,layer );
         demand_col_map = new Congestion_Col( width,height,layer );
-        cost_col_map = new Congestion_Col( width,height,layer );
+        cost_col_map =   new Congestion_Col( width,height,layer );
 
         supply_grid_2Dmap = new Congestion( width,height,layer );
         demand_grid_2Dmap = new Congestion( width,height,layer );
@@ -159,15 +160,20 @@ public:
     void supply_from_grid_to_edge();
     int  layer_assignment_straight_line(Bend* , Bend*, int);
     void layer_assignment_one_net(int);
-    
+    void layer_assignment_two_pin_net(int,two_pin_net<int>);
+    void z_dirertion_layer_assignment(branch<int>*,branch<int>*);
+    void update_cost_map();
+     
     // main function
     void route() ;
     void construct_congestion_map();
     void layer_assignment();
 
     //ouput
-    void write_result_to_cmd();
-    void write_result(int);
+    int write_result_to_cmd();
+    int write_result(int,int&);
+    void writeResult(fstream& );
+    void writeResult(int,fstream&);
     
 private:
     Placement * _placement;
@@ -184,6 +190,7 @@ private:
     vector<double> y_expand_result;     //expansion result of y
     vector<vector<two_pin_net<int>>> two_pin_netlist;
     vector<vector<branch<int>*>> branch_of_netlist;
+    int fail_segment;
     // Clean up Router
     void clear();
 };

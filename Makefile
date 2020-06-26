@@ -23,7 +23,7 @@ bin/$(EXECUTABLE): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
 
 %.o:  %.c ${INCLUDES}
-	$(CC) $(CFLAGS) $< -o $@ 
+	$(CC) $(CFLAGS) $< -o $@ -L../flute
 #$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

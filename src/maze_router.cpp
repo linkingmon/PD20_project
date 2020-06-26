@@ -63,17 +63,17 @@ void Shortest_Path::Set_boundary(){
 
 void Shortest_Path::Construct_Edge(){
     
-    cout<<"AdjList size is "<<AdjList.size()<<endl;
-    cout<<"width is "<<width<<endl;
-    cout<<"height is "<<height<<endl;
-    cout<<"left bound "<<left_bound<<endl;
-    cout<<"bottom bound "<<bottom_bound<<endl;
+    // cout<<"AdjList size is "<<AdjList.size()<<endl;
+    // cout<<"width is "<<width<<endl;
+    // cout<<"height is "<<height<<endl;
+    // cout<<"left bound "<<left_bound<<endl;
+    // cout<<"bottom bound "<<bottom_bound<<endl;
     Construct_H_Edge();
     Construct_V_Edge();
 }
 
 void Shortest_Path::Construct_H_Edge(){         // Construct horizontal edge
-    cout<<"Construct_H_Edge"<<endl;
+    // cout<<"Construct_H_Edge"<<endl;
     int z = 0;
     for(size_t x = 0 ; x < width-1 ; x++){
         for(size_t y = 0 ; y < height ; y++){
@@ -85,7 +85,7 @@ void Shortest_Path::Construct_H_Edge(){         // Construct horizontal edge
 }
 
 void Shortest_Path::Construct_V_Edge(){         // Construct horizontal edge
-    cout<<"Construct_V_Edge"<<endl;
+    // cout<<"Construct_V_Edge"<<endl;
 
     int z = 0;
     for(size_t x = 0 ; x < width ; x++){
@@ -143,12 +143,12 @@ void Shortest_Path::Dijkstra(){
                 break;
             }
         }
-        cout << "p2 x is "<<p2_x<<" p2 y is "<<p2_y<<endl; 
+        // cout << "p2 x is "<<p2_x<<" p2 y is "<<p2_y<<endl; 
         inside_min_heap[p2_x][p2_y] = true;
         Relax( grid_point_pointer[s_x][s_y], grid_point_pointer[p2_x][p2_y], (*iter).second);
         min_Heap.insert( (grid_point_pointer[p2_x][p2_y]) );
     }
-    min_Heap.print_heap();
+    // min_Heap.print_heap();
     
     // priority_queue <Coordinate,vector<Coordinate>,Coordinate_Compartor> min_Heap(grid_point.begin(),grid_point.end());
     
@@ -156,16 +156,16 @@ void Shortest_Path::Dijkstra(){
     // Coordinate point_min = min_Heap.top();
     // cout<<c_min.distance<<endl;
     while (!min_Heap.empty()) {
-        cout<<"before extractmin"<<endl;
-        min_Heap.print_heap();
+        // cout<<"before extractmin"<<endl;
+        // min_Heap.print_heap();
         Coordinate* point_min = min_Heap.ExtractMin();
-        cout<<"after extractmin"<<endl;
-        min_Heap.print_heap();
+        // cout<<"after extractmin"<<endl;
+        // min_Heap.print_heap();
 
         int p1_x = point_min->x - left_bound;
         int p1_y = point_min->y - bottom_bound;
-        cout << "new extract min "<<endl;
-        cout << "p1 x is "<<p1_x<<" p1 y is "<<p1_y<<" distance is :"<< grid_point_pointer[p1_x][p1_y]->distance << endl; 
+        // cout << "new extract min "<<endl;
+        // cout << "p1 x is "<<p1_x<<" p1 y is "<<p1_y<<" distance is :"<< grid_point_pointer[p1_x][p1_y]->distance << endl; 
         visited[p1_x][p1_y] = true;
         
         // find end point
@@ -195,23 +195,23 @@ void Shortest_Path::Dijkstra(){
                     break;
                 }
             }
-            cout << "p2 x is "<<p2_x<<" p2 y is "<<p2_y<< " distance is :"<< grid_point_pointer[p2_x][p2_y]->distance << endl; 
+            // cout << "p2 x is "<<p2_x<<" p2 y is "<<p2_y<< " distance is :"<< grid_point_pointer[p2_x][p2_y]->distance << endl; 
             // cout << "visited: "<< visited[p2_x][p2_y] << " inside_min_heap : " <<inside_min_heap[p2_x][p2_y]<<endl;
             if(visited[p2_x][p2_y] == true) continue;
 
             bool D_bool = Relax( grid_point_pointer[p1_x][p1_y], grid_point_pointer[p2_x][p2_y], (*iter).second);
             if(inside_min_heap[p2_x][p2_y] == true ){
                 if(D_bool){
-                    cout<<"decrease"<<endl;
-                    cout << "idx"<< grid_point_pointer[p2_x][p2_y]->index << endl; 
+                    // cout<<"decrease"<<endl;
+                    // cout << "idx"<< grid_point_pointer[p2_x][p2_y]->index << endl; 
                     min_Heap.Decrease_key( (grid_point_pointer[p2_x][p2_y]));
                 }
             }
             else{
-                cout<<"insert"<<endl;
+                // cout<<"insert"<<endl;
                 inside_min_heap[p2_x][p2_y] = true;
                 min_Heap.insert( (grid_point_pointer[p2_x][p2_y]));
-                min_Heap.print_heap();
+                // min_Heap.print_heap();
                 
             }
         }
@@ -419,7 +419,7 @@ void Shortest_Path::Build_the_path_old(){
 
     while(temp != grid_point_pointer[s_x][s_y]){
         n_temp = temp->predecessor;
-        cout<<*temp<<endl;
+        // cout<<*temp<<endl;
         if(n_temp->x == temp->x ){
            H_dir = false; 
         }
@@ -432,7 +432,7 @@ void Shortest_Path::Build_the_path_old(){
             cur_bend -> set_next( n_bend );
             cout<<"Bend"<<endl;
             cur_bend = n_bend;
-            cur_bend -> print();
+            // cur_bend -> print();
         }
         temp = n_temp;
     }
@@ -441,7 +441,7 @@ void Shortest_Path::Build_the_path_old(){
     
     n_bend = new Bend(temp->x, temp->y, temp->z ,cur_bend);
     cur_bend -> set_next( n_bend );
-    n_bend -> print();
+    // n_bend -> print();
 
 }
 
@@ -479,7 +479,7 @@ void Shortest_Path::Build_the_path(){
             n_temp = temp->V_predecessor;
             H_dir = false;
         }
-        cout<<*temp<<endl;
+        // cout<<*temp<<endl;
         // if(n_temp->x == temp->x ){
         //    H_dir = false; 
         // }
@@ -488,17 +488,17 @@ void Shortest_Path::Build_the_path(){
         // }
         if( last_H_dir != H_dir ){
             last_H_dir = H_dir;
-            n_bend = new Bend(temp->x, temp->y, temp->z ,cur_bend);
+            n_bend = new Bend(temp->x, temp->y, temp->z , NULL, cur_bend);
             assert(n_bend != NULL);
-            cur_bend -> set_next( n_bend );
-            cout<<"Bend"<<endl;
+            cur_bend -> set_prev( n_bend );
+            // cout<<"Bend"<<endl;
             cur_bend = n_bend;
-            cur_bend -> print();
+            // cur_bend -> print();
         }
         temp = n_temp;
     }
-    target_bend->print();
-    target_bend = target_bend -> get_next();
+    // target_bend->print();
+    // target_bend = target_bend -> get_next();
     if( target_bend == NULL){
         cerr << "QAQ"<<endl;
         // exit(-1);
@@ -506,13 +506,22 @@ void Shortest_Path::Build_the_path(){
     // target_bend -> set_prev(NULL);
     // return;
     
-    n_bend = new Bend(temp->x, temp->y, temp->z ,cur_bend);
-    cur_bend -> set_next( n_bend );
-    n_bend -> print();
-
+    n_bend = new Bend(temp->x, temp->y, temp->z, NULL, cur_bend);
+    cur_bend -> set_prev( n_bend );
+    // n_bend -> print();
+    source_bend = n_bend;
     for( int i = 0 ; i < grid_point_pointer.size(); i++){
         for( int j = 0; j < grid_point_pointer[i].size(); j++){
             delete grid_point_pointer[i][j];
         }
     }
+}
+
+void Shortest_Path::reverse_path(){
+//     Bend* first,second;
+//     first = target_bend;
+//     second = first->get_next();
+//     while(second != NULL){
+        
+//     }
 }

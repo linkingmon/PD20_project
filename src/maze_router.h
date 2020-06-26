@@ -82,8 +82,10 @@ public:
     void AddEdge(int from, int to, int weight);
     void Build_the_path();
     void Build_the_path_old();
+    void reverse_path();
     Coordinate* End_point();
     Bend* target() { return target_bend;}
+    Bend* source() { return source_bend;} 
     int Estimate_distance_to_target(int,int);       // function of estimate distance to target
 private:
     int num_vertex;
@@ -96,6 +98,7 @@ private:
     Congestion_Col* col_map;
     Congestion*     grid_map;
     Bend*           target_bend;
+    Bend*           source_bend;
     vector<vector<list<pair<SP_direction,double> > > > AdjList;
     vector<SP_direction> predecessor;
     vector<Coordinate> grid_point_Min_Heap;
