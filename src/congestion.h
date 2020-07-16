@@ -67,6 +67,54 @@ private:
     size_t Layer;
 };
 
+template <class Data>
+class Two_Dimension_map{
+
+public:
+    Two_Dimension_map() {}
+    Two_Dimension_map(size_t x, size_t y, Data default_value = Data())
+    :Col(x), Row(y){ 
+        map_2D = vector<vector<Data>> ( y , vector<Data>(x,default_value)) ;
+    }
+
+    Data& operator() (size_t x , size_t y ){
+        // return cong_map.at(x + y * Row + z * Row * Col );
+        return map_2D[y][x];
+    }
+    // set congestion map with one layer 
+    void cong_map_clear(){  map_2D.clear();}
+
+    void print(){
+        cout<<endl;
+        cout<<"====================================="<<endl;
+        cout<<"2D grid"<<endl;
+        cout<<setw(3)<<" ";
+        for(size_t k = 0 ; k < Col ; k++){
+            cout<<setw(9)<<"Col"<<k+1;
+        }
+        cout<<endl;
+        for(size_t j = 0 ; j < Row ; j++){
+            cout<<"Row"<<j+1<<" ";
+            for(size_t k = 0; k < Col ; k++){
+                // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
+                cout<<setw(5)<<map_2D[j][k];
+            }
+            cout<<endl;
+        }
+        cout<<endl;
+        cout<<"====================================="<<endl;
+        cout<<endl;
+    }   
+private:
+    vector<vector<Data>> map_2D;
+    size_t Row;
+    size_t Col;
+};
+
+
+
+
+
 //describe congestion of Row edge ( Horizontal edge )
 class Congestion_Row {
 public:

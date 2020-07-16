@@ -17,74 +17,6 @@ extern "C" {
 }
 
 using namespace std;
-template<class data>
-class branch{
-public:
-    branch() {}
-    branch(data x, data y, data z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n){}
-    data _x;     //row index
-    data _y;     //column index
-    data _z;     //layer index
-    int  _n;     //neighbor
-    int  _id;    //index
-    bool operator == (branch<data> a) {return (_x == a._x && _y == a._y); }
-    friend ostream& operator<<(ostream& os, const branch& a){ os<< "("<< a._x <<","<<a._y<<","<<a._z<<")   index: "<<a._id<<" neighbor: "<<a._n; return os;}
-};
-
-template<class data>
-class two_pin_net
-{
-    friend class Router;
-public:
-    two_pin_net(branch<data>* a, branch<data>* b) : b_source(a), b_target(b){}
-    two_pin_net() {}
-    ~two_pin_net(){}
-    Bend* get_source() { return source;};
-    void set_source( Bend* root ) { source = root;}
-    void print_bend() { 
-        Bend* temp = source ; 
-        while(temp != NULL){
-            temp->print();
-            temp = temp->get_next();
-        }
-    }
-private:
-    branch<data>* b_source;
-    branch<data>* b_target;
-    Bend* source; //staring point
-
-};
-
-class Grid
-{
-public:
-    Grid() {}
-    Grid(int x , int y, int num_master):_x(x),_y(y){
-        // master_list.resize(num_master);
-    }
-    ~Grid(){}
-
-    int getx()  {return _x;}
-    int gety()  {return _y;}
-    void add_Cell( int cell_id)     { cell_list.push_back(cell_id) ;}
-    void add_MCell( int MCell_id ) { 
-        map<int,int>::iterator iter = master_list.find(MCell_id);
-        if(iter == master_list.end()){
-            master_list.insert(pair<int,int>(MCell_id,1) );
-        }   
-        else 
-            ++(iter->second);
-    }
-    map<int,int> get_MCell_list() const {return master_list; }
-    // int& getMCell( int MCell_id) { return master_list[MCell_id] ;}
-private:
-    int   _x ;      //normalized x
-    int   _y ;      //normalized y
-    vector<int> cell_list;      //cell index list
-    int cell_num;               //number of cells
-    // vector<int> master_list;    //the number of each matser cell
-    map<int,int> master_list;   //map from master cell index to its number 
-};
 
 class Router
 {
@@ -114,6 +46,7 @@ public:
         supply_grid_2Dmap = new Congestion( width,height,layer );
         demand_grid_2Dmap = new Congestion( width,height,layer );
 
+       
     }
     ~Router()
     {
@@ -121,8 +54,8 @@ public:
     }
     void two_pin_net_L_routing(Pin* , Pin* );           // perform L routing in 2D plane with two pin
     void two_pin_net_Z_routing(Pin* , Pin* );           // perform Z routing in 2D plane with two pin
-    void two_pin_net_Both_L_routing(two_pin_net<int>*,bool);
-    void two_pin_net_L_routing(two_pin_net<int>*);
+    void two_pin_net_Both_L_routing(two_pin_net*,bool);
+    void two_pin_net_L_routing(two_pin_net*);
     Bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z );     // perform L routing in 2D plane
     Bend* Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z);        // perform Z routing in 2D plane
     double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
@@ -158,10 +91,19 @@ public:
     void Exclude_demand_V(int,int,int,int,double);
     void projection_to_2D();
     void supply_from_grid_to_edge();
-    int  layer_assignment_straight_line(Bend* , Bend*, int);
+    
+    void compute_total_net_length();
+    void compute_one_net_length(int);
+    void update_distance_of_branch();
+    void update_distance_of_branch_in_one_net(int);
+
+    void layer_assignment_straight_line(Bend*, Bend*,int, int);
+    int  layer_assignment_straight_line_old_method(Bend* , Bend*, int);
+    int  layer_assignment_straight_line_V(Bend*,Bend*,int,double);
+    int  layer_assignment_straight_line_H(Bend*,Bend*,int,double);
     void layer_assignment_one_net(int);
-    void layer_assignment_two_pin_net(int,two_pin_net<int>);
-    void z_dirertion_layer_assignment(branch<int>*,branch<int>*);
+    void layer_assignment_two_pin_net(int,two_pin_net);
+    void z_dirertion_layer_assignment(branch*,branch*);
     void update_cost_map();
      
     // main function
@@ -177,19 +119,21 @@ public:
     
 private:
     Placement * _placement;
-    vector<two_pin_net<int>*> twopin_netlist_L;
-    vector<two_pin_net<int>*> twopin_netlist_Z;
+    vector<two_pin_net*> twopin_netlist_L;
+    vector<two_pin_net*> twopin_netlist_Z;
     Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map;            //congestion of row
     Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map;            //congestion of column
     Congestion* supply_grid_map, * supply_grid_2Dmap;        //supply of total grid
     Congestion* demand_grid_map, * demand_grid_2Dmap;       //demand of total grid
+    Two_Dimension_map< pair<int,int>>   layer_range;
     vector<vector<Grid*>> grid_map;     //grid map include cell information 
     vector<double> x_expand_factor;     //expansion factor of x
     vector<double> x_expand_result;     //expansion result of x
     vector<double> y_expand_factor;     //expansion factor of y
     vector<double> y_expand_result;     //expansion result of y
-    vector<vector<two_pin_net<int>>> two_pin_netlist;
-    vector<vector<branch<int>*>> branch_of_netlist;
+    vector<vector<two_pin_net>> two_pin_netlist;
+    vector<vector<branch*>> branch_of_netlist;
+    vector<vector<Segment>> segment_of_netlist;
     int fail_segment;
     // Clean up Router
     void clear();
