@@ -116,8 +116,13 @@ void Placement::parseInput(fstream &inFile)
     // Routes
     str_list = readline2list(inFile);
     int num_route = stoi(str_list[1]);
-    cout << "Num of routes: " << num_route << endl;
-
+    int init_wire_length = 0;
+    for(int i = 0 ; i < num_route ; ++i){
+        str_list = readline2list(inFile);
+        init_wire_length += ( abs(stoi(str_list[3]) - stoi(str_list[0])) + abs(stoi(str_list[4]) - stoi(str_list[1])) + abs(stoi(str_list[5]) - stoi(str_list[2])) );
+    }
+    cout << "Num of routes: " << num_route << '\n';
+    cout << "Initial wire length: " << init_wire_length << endl;
     cout << "Done Parsing ..." << '\n';
     printSummary();
     return;
