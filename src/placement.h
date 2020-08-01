@@ -28,8 +28,7 @@ public:
 
     // access method
     Cell* getCell(size_t i) { return _cellArray[i];} 
-    
-
+    Master* getMCell(size_t i ) { return masters[i];}    
     // modify method
     void parseInput(fstream &inFile);
 
@@ -37,7 +36,7 @@ public:
     void printSummary() const;
     void reportNet() const;
     void reportCell() const;
-    void writeResult(fstream &outFile);
+    // void writeResult(fstream &outFile);
 
 private:
     // maximum move cell

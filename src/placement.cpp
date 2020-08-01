@@ -173,36 +173,6 @@ void Placement::reportCell() const
     return;
 }
 
-void Placement::writeResult(fstream &outFile)
-{
-    // stringstream buff;
-    // buff << _cutSize;
-    // outFile << "Cutsize = " << buff.str() << '\n';
-    // buff.str("");
-    // buff << _partSize[0];
-    // outFile << "G1 " << buff.str() << '\n';
-    // for (size_t i = 0, end = _cellArray.size(); i < end; ++i)
-    // {
-    //     if (_cellArray[i]->getPart() == 0)
-    //     {
-    //         outFile << _cellArray[i]->getName() << " ";
-    //     }
-    // }
-    // outFile << ";\n";
-    // buff.str("");
-    // buff << _partSize[1];
-    // outFile << "G2 " << buff.str() << '\n';
-    // for (size_t i = 0, end = _cellArray.size(); i < end; ++i)
-    // {
-    //     if (_cellArray[i]->getPart() == 1)
-    //     {
-    //         outFile << _cellArray[i]->getName() << " ";
-    //     }
-    // }
-    // outFile << ";\n";
-    // return;
-}
-
 void Placement::clear()
 {
     // for (size_t i = 0, end = _cellArray.size(); i < end; ++i)

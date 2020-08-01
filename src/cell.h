@@ -6,8 +6,8 @@
 #include <iostream>
 #include <cstdlib>
 #include "struc.h"
-using namespace std;
 
+using namespace std;
 
 class Master
 {
@@ -26,6 +26,13 @@ public:
     const vector<ExtraDemand>& get_adjHDemand() { return  _adjDemand;}
     const vector<ExtraDemand>& get_sameDemand() { return  _sameDemand;}
     int getId() { return _id;}
+
+    //access method 
+    vector<int> get_block_layer()  const { return  _BlockLayers; }
+    vector<int> get_block_demand() const { return _BlockDemand; }
+    int getId() const               { return _id;   }
+    vector<ExtraDemand> get_sameDemand() const { return _sameDemand; }
+    vector<ExtraDemand> get_adjHDemand() const { return _adjDemand; }
 
     void print() {
         cout << "Master cell name: " << _name << endl;
@@ -61,8 +68,8 @@ public:
     string get_name() {return _name;};
 
 private:
-    int _id;                             
     string _name;                       // Name of the master cell (MC)
+    int _id;                            // id of master cell
     int _numPin;                        // Number of pin of this MC
     int _numBlockage;                   // Number of blockage of this MC
     vector<Pin*> _pinArray;             // Pin array of the MC
@@ -89,12 +96,16 @@ public:
 
     int getx() {return _x;};
     int gety() {return _y;};
+    int get_norm_x( int n_factor) { return _x - n_factor;} // get normalize x
+    int get_norm_y( int n_factor) { return _y - n_factor;} // get normalize y
+    Master* get_master() const { return _type; }
 
     int setx(int x) {_x = x;};
     int sety(int y) {_y = y;};
     Master* get_master() {return _type;};
 
     bool is_movable() {return _isMovable;};
+    string get_name() {return _cellname;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x
