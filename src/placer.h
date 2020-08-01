@@ -145,6 +145,8 @@ private:
     }
     void clear();
     double rand_01() {return double(rand() % 100000) * double(1e-5);};
+
+    void writeResult(fstream &outFile);
 };
 
 #endif // Placer_H

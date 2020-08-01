@@ -919,6 +919,17 @@ double Placer::cal_move_cell_num(){
     return move_num;
 }
 
+void Placer::writeResult(fstream &outFile){
+    
+    outFile << "NumMovedCellInst " << cal_move_cell_num() << endl;
+    for(int i = 0 ; i < _placement->_numCells ; ++i){
+        if(_placement->_cellArray[i]->getx() != _init_cellAry[i].getx() ||
+            _placement->_cellArray[i]->gety() != _init_cellAry[i].gety() )
+                outFile << "CellInst " << _placement->_cellArray[i]->get_name() << " " << _placement->_cellArray[i]->gety() << " " << _placement->_cellArray[i]->getx() << '\n';
+    }
+
+}
+
 void Placer::init_fixCell_list(){
     _fixCell_list.reserve(_placement->_numCells);
     for(int i = 0 ; i < _placement->_numCells ; ++i){

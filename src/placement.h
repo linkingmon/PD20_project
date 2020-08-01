@@ -36,7 +36,7 @@ public:
     void printSummary() const;
     void reportNet() const;
     void reportCell() const;
-    void writeResult(fstream &outFile);
+    // void writeResult(fstream &outFile);
 
 private:
     // maximum move cell

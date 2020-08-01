@@ -57,8 +57,8 @@ int main(int argc, char **argv)
 
     // write result
     print_start("Write result to file");
-    placement->writeResult(output);
-    router->writeResult(output);
+    placement->writeResult(output); // write move cells 
+    router->writeResult(output); // write routing wires
     print_end();
 
     return 0;

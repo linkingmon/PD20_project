@@ -105,6 +105,7 @@ public:
     Master* get_master() {return _type;};
 
     bool is_movable() {return _isMovable;};
+    string get_name() {return _cellname;};
 private:
     string _cellname;       // cell name
     int _x;                 // cell coordinate x

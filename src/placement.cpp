@@ -52,7 +52,7 @@ void Placement::parseInput(fstream &inFile)
         int numPin = stoi(str_list[2]);
         int numBlockage = stoi(str_list[3]);
         string name = str_list[1];
-        Master* cur_ms = new Master(name, numPin, numBlockage,i);
+        Master* cur_ms = new Master(name, numPin, numBlockage , i );
         for(int j = 0 ; j < numPin ; ++j){
             str_list = readline2list(inFile);
             cur_ms->add_pin(str_list[1], LayerName2Id[str_list[2]]);
@@ -116,8 +116,13 @@ void Placement::parseInput(fstream &inFile)
     // Routes
     str_list = readline2list(inFile);
     int num_route = stoi(str_list[1]);
-    cout << "Num of routes: " << num_route << endl;
-
+    int init_wire_length = 0;
+    for(int i = 0 ; i < num_route ; ++i){
+        str_list = readline2list(inFile);
+        init_wire_length += ( abs(stoi(str_list[3]) - stoi(str_list[0])) + abs(stoi(str_list[4]) - stoi(str_list[1])) + abs(stoi(str_list[5]) - stoi(str_list[2])) );
+    }
+    cout << "Num of routes: " << num_route << '\n';
+    cout << "Initial wire length: " << init_wire_length << endl;
     cout << "Done Parsing ..." << '\n';
     printSummary();
     return;
@@ -138,7 +143,7 @@ void Placement::printSummary() const
     for(int i = 0 ; i < _numMasterCell ; ++i) masters[i]->print();
     cout << "* Num of Cells: " << _numCells << '\n';
     for(int i = 0 ; i < _numCells ; ++i) _cellArray[i]->print();
-    cout << "* Num of Nets: " << _numNets << '\n';
+    cout << "* Num of Cells: " << _numNets << '\n';
     for(int i = 0 ; i < _numNets ; ++i) _netArray[i]->print();
     cout << "=================================================" << endl;
     cout << endl;
@@ -166,36 +171,6 @@ void Placement::reportCell() const
     cout << "* Num of Cells: " << _numCells << '\n';
     for(int i = 0 ; i < _numCells ; ++i) _cellArray[i]->print();
     return;
-}
-
-void Placement::writeResult(fstream &outFile)
-{
-    // stringstream buff;
-    // buff << _cutSize;
-    // outFile << "Cutsize = " << buff.str() << '\n';
-    // buff.str("");
-    // buff << _partSize[0];
-    // outFile << "G1 " << buff.str() << '\n';
-    // for (size_t i = 0, end = _cellArray.size(); i < end; ++i)
-    // {
-    //     if (_cellArray[i]->getPart() == 0)
-    //     {
-    //         outFile << _cellArray[i]->getName() << " ";
-    //     }
-    // }
-    // outFile << ";\n";
-    // buff.str("");
-    // buff << _partSize[1];
-    // outFile << "G2 " << buff.str() << '\n';
-    // for (size_t i = 0, end = _cellArray.size(); i < end; ++i)
-    // {
-    //     if (_cellArray[i]->getPart() == 1)
-    //     {
-    //         outFile << _cellArray[i]->getName() << " ";
-    //     }
-    // }
-    // outFile << ";\n";
-    // return;
 }
 
 void Placement::clear()
