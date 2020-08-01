@@ -44,9 +44,12 @@ public:
         cout<<"heap size: "<<size()<<endl;
         int _size = size();
         for (i = 1 ; i <= _size/2 - 1 ; i++){
-            cout<<"index "<< i-1 <<" weight:" << _data[i-1] << ", left child: "<< _data[2*i-1]<<", right child: "<<_data[2*i]<<endl;
+            cout<<"index "<< i-1 <<" info:" << _data[i-1] << ", left child: "<< _data[2*i-1]<<", right child: "<<_data[2*i]<<endl;
         }
-        cout<<"index "<< i-1 <<" weight:"<< _data[i-1] << ", left child: "<< _data[2*i-1];
+        cout<<"index "<< i-1 <<" info:"<< _data[i-1] ;
+        if(2*i - 1 < size()) 
+            cout<<", left child: "<< _data[2*i-1];
+        cout<<endl;
         if(2*i < size())
             cout<<", right child: "<<_data[2*i];
         cout<<endl;
@@ -104,9 +107,9 @@ public:
         int t = p * 2 ;
 
         while ( t <= size() ){
-            if ( t < size() ) //has right child
+            if ( t < size() )                   //has right child
                 if ( _data[t] < _data[t-1] )    
-                    ++t;//to the smaller child
+                    ++t;                        //to the smaller child
             if( _data[ size() -1 ]  < _data [t-1] )
                 break;
             _data[p-1] =  _data [t-1] ;
@@ -192,12 +195,18 @@ public:
         cout<<"===================Heap====================="<<endl;
         cout<<"heap size: "<<size()<<endl;
         int _size = size();
-        for (i = 1 ; i <= _size/2 - 1 ; i++){
-            cout<<"index "<< i-1 <<" weight:" << (* _data[i-1] )<< ", left child: "<< (*_data[2*i-1]) <<", right child: "<< (*_data[2*i])<<endl;
+        for (i = 1 ; i <=  _size ; i++){
+            cout<<"index "<< i-1 <<" info:" << (*_data[i-1] ) <<endl;
         }
-        cout<<"index "<< i-1 <<" weight:"<< (*_data[i-1] )<< ", left child: "<<(* _data[2*i-1] );
-        if(2*i < size())
-            cout<<", right child: "<<_data[2*i];
+        // for (i = 1 ; i <= _size/2 - 1 ; i++){
+        //     cout<<"index "<< i-1 <<" info:" << (*_data[i-1] )<< ", left child: "<<( *_data[2*i-1])<<", right child: "<<(*_data[2*i])<<endl;
+        // }
+        // cout<<"index "<< i-1 <<" info:"<< (*_data[i-1]) ;
+        // if(2*i - 1 < size()) 
+        //     cout<<", left child: "<< (*_data[2*i-1]);
+        // if(2*i < size())
+        //     cout<<", right child: "<<(*_data[2*i]);
+        cout<<endl;
         cout<<endl;
         cout<<"============================================"<<endl;
         cout<<endl;
@@ -253,19 +262,23 @@ public:
         int p = i + 1 ;
         int t = p * 2 ;
 
-        while ( t <= size() ){
-            if ( t < size() ) //has right child
+        while ( t < size() ){
+            if ( t < size() - 1 ) //has right child
                 if ( (*_data[t]) < (*_data[t-1]) )    
                     ++t;//to the smaller child
             if( (*_data[ size() -1 ] ) < (*_data [t-1]) )
                 break;
             _data[p-1] =  _data [t-1] ;
             update_position(p-1);
+            cout<<"p idx "<< p <<endl;
+            cout<<"t idx "<< t <<endl;
             p = t ;
             t = p * 2 ;
         }
         _data[p-1] = _data[ size() -1 ] ;
         update_position(p-1);
+        cout<<*_data[p-1]<<endl;
+        cout<<"idx "<<p-1<<endl;
         _data.pop_back();
 
     }

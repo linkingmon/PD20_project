@@ -44,7 +44,7 @@ public:
     bool operator > (const Coordinate& b){return (distance + estimate_distance > b.distance + b.estimate_distance);}
     bool operator < (const Coordinate& b){return (distance + estimate_distance < b.distance + b.estimate_distance);}
     bool operator == (const Coordinate& b){return (x == b.x && y == b.y);}
-    friend ostream& operator<<(ostream& os, const Coordinate& a) { os<<"("<<a.x<<", "<<a.y<<") "<< " idx: " << a.index << " d is "<<(a.distance + a.estimate_distance)<<" bend: "<<a.bend; return os;}
+    friend ostream& operator<<(ostream& os, const Coordinate& a) { os<<"("<<a.x<<", "<<a.y<<") "<< " idx: " << a.index << " d is "<<(a.distance ) <<" estimate_d is "<<( a.estimate_distance)<<" bend: "<<a.bend; return os;}
 };
 
 class Coordinate_Compartor{

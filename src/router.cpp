@@ -30,7 +30,7 @@ void Router::route(){
     // cout<<(*row_map)(2,3,1)<<endl;
 
     // cost_row_map->print_congestion();
-    // cost_col_map->print_congestion();
+    cost_col_map->print_congestion();
     
     construct_grid_map();
     construct_supply_demand_map();
@@ -56,13 +56,14 @@ void Router::route(){
     cout<<"A star serach routing"<<endl;
     cout<<endl;
     for(int i = 0; i < 5 ; i++){
-
+        cout<<"the "<<i<<" times A star"<<endl;
         A_star_search_routing();
     }
     cout<<"layer assignment"<<endl;
-    cout<<endl;
+    cout<<endl; 
     layer_assignment(); 
-    layer_range.print();    
+    check_demand();
+    // layer_range.print();    
 
     // supply_grid_map->print_congestion();
     // demand_grid_map->print_congestion();
@@ -613,13 +614,17 @@ void Router::A_star_search_routing(){
             if( abs(s_x-t_x) <= 0) continue;
             if( abs(s_y-t_y) <= 0) continue;
             Shortest_Path test( s_x, s_y, 0, t_x, t_y, 0, 1, cost_row_map, cost_col_map, demand_grid_map );
+            cout<<"Dijkstra..."<<endl;
             test.Dijkstra();
+            cout<<"Build the path..."<<endl;
             test.Build_the_path();
             Bend* result = test.source();
             Bend* old_bend = two_pin_netlist[i][j].get_source();
 
+            cout<<"Exclude the demand"<<endl;
             Exclude_demand(old_bend,1);
             two_pin_netlist[i][j].set_source(result);
+            cout<<"ADD demand..."<<endl;
             Add_demand(result,1);
 
         }   
@@ -627,7 +632,7 @@ void Router::A_star_search_routing(){
 }
 
 void Router::update_cost_map(){
-    double h = 1;
+    double h = 0.01;
     double k = 1;
     int width = _placement->_boundary_width;
     int height = _placement->_boundary_height;
@@ -645,7 +650,6 @@ void Router::update_cost_map(){
            (*cost_col_map)(x,y,0) = 1 + h/(1+exp(-k * (*demand_col_map)(x,y,0) - (*supply_col_map)(x,y,0))) ;
         }
     }
-
 }
 
 Tree Router::Flute_function(vector<double> a, vector<double> b){
@@ -897,11 +901,29 @@ void Router::Add_demand(Bend* start, double f){        //2D
     }
 }
 
+void Router::Add_demand_3D(Bend* s, double f = 1){
+    Bend* trav = s;                 //traverse
+    Bend* n_trav = trav->get_next();    //next traverse
+    while(n_trav != NULL){
+        if(trav->_x != n_trav->_x){         //Horizontal
+            Add_demand_3D_H(trav->_x, n_trav->_x, trav->_y, trav->_z, f);
+        }
+        else if(trav->_y != n_trav->_y){    //Vertical
+            Add_demand_3D_V(trav->_x, trav->_y , n_trav->_y, trav->_z, f);
+        }
+        else if(trav->_z != n_trav->_z){    //Z_direction
+            Add_demand_3D_Z(trav->_x, trav->_y , trav->_z, n_trav->_z, f);
+        }
+        trav = n_trav;
+        n_trav = trav->get_next();
+    }
+}
+
 void Router::Add_demand_H( int x1, int x2, int y, int z, double f){
     if(x1 > x2) 
         swap(x1,x2); //make x1 < x2
     for(int x = x1; x < x2; x++){
-        (*demand_row_map)(x,y,z) += f;
+        (*demand_grid_map)(x,y,z) += f;
     }
 }
 
@@ -910,6 +932,30 @@ void Router::Add_demand_V( int x, int y1, int y2, int z, double f){
         swap(y1,y2); //make y1 < y2
     for(int y = y1; y < y2; y++){
         (*demand_col_map)(x,y,z) += f;
+    }
+}
+
+void Router::Add_demand_3D_H(int x1, int x2, int y, int z, double f ){
+    if(x1 > x2) 
+        swap(x1,x2); //make x1 < x2
+    for(int x = x1; x < x2; x++){
+        (*demand_grid_map)(x,y,z) += f;
+    }
+}
+
+void Router::Add_demand_3D_V(int x, int y1, int y2, int z, double f ){
+    if(y1 > y2) 
+        swap(y1,y2); //make y1 < y2
+    for(int y = y1; y < y2; y++){
+        (*demand_grid_map)(x,y,z) += f;
+    }
+}
+
+void Router::Add_demand_3D_Z(int x, int y, int z1, int z2, double f ){
+    if(z1 > z2) 
+        swap(z1,z2); //make z1 < z2
+    for(int z = z1; z < z2; z++){
+        (*demand_grid_map)(x,y,z) += f;
     }
 }
 
@@ -1010,10 +1056,17 @@ void Router::layer_assignment(){
 
     compute_total_net_length();
     update_distance_of_branch();
-    for(int i = 0 ; i < two_pin_netlist.size(); i++){
-        layer_assignment_one_net(i);
-        return;
+    // vector<Net*>
+    vector<size_t> sorted_idx_of_net = sort_indexes(_placement -> _netArray);
+    for(int i = 0; i < sorted_idx_of_net.size(); i++){
+        cout<<"layer assignment : "<<sorted_idx_of_net[i]<<endl;
+        layer_assignment_one_net(sorted_idx_of_net[i]);
+        
     }
+    // for(int i = 0 ; i < two_pin_netlist.size(); i++){
+    //     cout<<"layer assignment : "<<i<<endl;
+    //     layer_assignment_one_net(i);
+    // }
     
 }
 
@@ -1026,41 +1079,112 @@ void Router::layer_assignment_one_net(int net_idx){
     layer_range = Two_Dimension_map<pair<int,int>>(width,height,initial_pair);
     vector<vector<Segment>> total_segment;    
     int pin_num = _placement -> _netArray[net_idx] -> getPin_num();
+    int total_number_segment = 0;
     for(int i = 0 ; i < two_pin_netlist[net_idx].size() ; i++){
+        // two_pin_netlist[net_idx][i].print_bend();
         branch* s = two_pin_netlist[net_idx][i].b_source;
         branch* t = two_pin_netlist[net_idx][i].b_target;
         bool s_is_pin = ( s->_id < pin_num ) ? true : false;
         bool t_is_pin = ( t->_id < pin_num ) ? true : false;
+        int s_to_pin = s->dist_to_pin;
+        int t_to_pin = t->dist_to_pin;  
         int seg_len = two_pin_netlist[net_idx][i].segment_length();
-        cout<<"idx " <<i<<"segment len: "<<seg_len<<endl;
-        if( total_segment.capacity() < seg_len ) total_segment.resize(seg_len);
-        if( s_is_pin && t_is_pin){
-            Bend* travel = two_pin_netlist[net_idx][i].source;
-            int n = 0;
-            for ( ; n < seg_len/2 ; n++){
+        int d_of_two_branch = abs( s_to_pin - t_to_pin );
+        total_number_segment += seg_len;
+        int max_dist_to_pin = seg_len + min(s_to_pin,t_to_pin);
+        cout<<endl<<"================"<<endl;
+        cout<<"max dist to pin: "<<max_dist_to_pin<<endl;
+        cout<<endl<<"idx " <<i<<" segment len: "<<seg_len<<endl;
+        cout<<"dist to pin: s: "<<s_to_pin<<" t: "<<t_to_pin<<endl;
+        if( total_segment.capacity() < max_dist_to_pin ) total_segment.resize(max_dist_to_pin);
+        Bend* travel = two_pin_netlist[net_idx][i].source;
+        int n = 0;
+        if( s_to_pin <= t_to_pin){
+            int d = s_to_pin ;
+            int increase_len = min ( seg_len , (seg_len - d_of_two_branch)/2 + d_of_two_branch ); 
+            
+            for ( ; n < increase_len ; n++, d++){
                 Bend* next_bend = travel->get_next();
-                total_segment[n].push_back( Segment(travel, next_bend) );
+                total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
+                // cout<<"n is "<<n<<" d is "<<d<<endl;
+                assert(travel != NULL);
             }
-            if( seg_len % 2 == 1 ){
+            if ( n < seg_len && ( seg_len - d_of_two_branch) % 2 == 1 ){
+                Bend* next_bend = travel->get_next();
+                total_segment[d].push_back( Segment(travel, next_bend) );
+                travel = next_bend;
+                // cout<<"n is "<<n<<" d is "<<d<<endl;
+                n++;
+                d--;
+                assert(travel != NULL);
+            }
+            for ( ; n < seg_len ; n++ ,d--){
+                Bend* next_bend = travel->get_next();
+                total_segment[d].push_back( Segment(travel, next_bend) );
+                travel = next_bend;
+                assert(travel != NULL);
+                // cout<<"n is "<<n<<" d is "<<d<<endl;
+            }
+        }
+        else if( s_to_pin > t_to_pin){
+            cout<<"================="<<endl;
+            cout<<"back from target"<<endl;
+            int d = t_to_pin ;
+            int decrease_len = min ( seg_len , (seg_len - d_of_two_branch)/2 + d_of_two_branch ); 
+            // if( decrease_len > seg_len){
                 
-                Bend* next_bend = travel->get_next();
-                total_segment[n].push_back( Segment(travel, next_bend) );
-                travel = next_bend;
-            }
-            // while(next_bend != NULL){
-            //     segment;
             // }
-        } 
+            int increase_len = seg_len - decrease_len;
+            // cout<<"increase length: "<<increase_len<<endl;
+            for ( ; n < increase_len ; n++, d++){
+                Bend* next_bend = travel->get_next();
+                total_segment[d].push_back( Segment(travel, next_bend) );
+                travel = next_bend;
+                // cout<<"n is "<<n<<" d is "<<d<<endl;
+                assert(travel != NULL);
+            }
+            if ( n < seg_len && ( seg_len - d_of_two_branch) % 2 == 1 ){
+                Bend* next_bend = travel->get_next();
+                total_segment[d].push_back( Segment(travel, next_bend) );
+                travel = next_bend;
+                // cout<<"n is "<<n<<" d is "<<d<<endl;
+                n++;
+                d--;
+                assert(travel != NULL);
+            }
+            for ( ; n < seg_len ; n++, d--){
+                Bend* next_bend = travel->get_next();
+                total_segment[d].push_back( Segment(travel, next_bend) );
+                travel = next_bend;
+                // cout<<"decreasing... n is "<<n<<" d is "<<d<<endl;
+                assert(travel != NULL);
+            }
+        }        
+        // cout<<"n = "<< n << " seg_length = "<< seg_len << " half seg_length = "<< seg_len/2 <<endl;
+        // cout<<"total segment: capacity: "<<total_segment.capacity()<<" size "<<total_segment.size()<<endl;
+        // cout<<"d = "<< d <<endl; 
     }
     // Bend* source = new Bend(0,0,4);
     // Bend* target = new Bend(0,4,0);
     bool Horizontal = true;
     int min_layer = _placement -> _netArray[net_idx]->getMinLayer();
     // int net_idx = 0;
-
-
-    // layer_assignment_straight_line(source, target, min_layer,net_idx);
+    cout<<"layer assignment about segement"<<endl;
+    cout<<"total segment: "<< total_number_segment <<endl;
+    for (int i = 0; i < total_segment.size(); i++){
+        cout<<"the i is "<< i << " size "<< total_segment[i].size()<<endl;
+        for( int j = 0; j < total_segment[i].size(); j++){
+            Bend* source = total_segment[i][j].source;
+            Bend* target = total_segment[i][j].target;
+            if(source == NULL){
+                total_segment[i][j].print();
+            }
+            assert(source != NULL); 
+            assert(target != NULL);
+            layer_assignment_straight_line(source, target, min_layer,net_idx);
+        }
+    }
 }
 
 void Router::compute_total_net_length(){
@@ -1069,23 +1193,25 @@ void Router::compute_total_net_length(){
     }
 }
 
-
 void Router::compute_one_net_length(int idx){
     int length = 0;
     for(size_t i = 0; i < two_pin_netlist[idx].size(); i++){
         length += two_pin_netlist[idx][i].length();
     }
     cout<<"Net: "<<idx<<" length: "<<length<<endl;
+    _placement -> _netArray[idx]->set_2D_len( length );
+    
 }
 
 void Router::update_distance_of_branch(){
+    cout<<"update distance of branch"<<endl;
     for(size_t i = 0 ; i < two_pin_netlist.size(); i++){
         update_distance_of_branch_in_one_net( i );
     }
 }
 
 void Router::update_distance_of_branch_in_one_net(int idx){
- 
+    // not sure about the order of two pin net can let all the branch assign correct distance
     int pin_num = _placement -> _netArray[idx] -> getPin_num();
     vector<int> non_traval;
     for(int i = 0 ; i < two_pin_netlist[idx].size() ; i++){
@@ -1272,13 +1398,20 @@ void Router::z_dirertion_layer_assignment(branch *a, branch *b){
 }
 
 void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_layer , int net_idx = 0){
+    cout<<endl;
+    cout<<"layer assignment the straingt line"<<endl;
+    assert(source != NULL);
+    assert(target != NULL);
     int s_x = source->_x;
+    cout<<"?"<<endl;
     int s_y = source->_y;
     int s_layer = source->_z;
     int t_x = target->_x;
     int t_y = target->_y;
     int t_z = target->_z;
     bool limit_range = (t_z == -1 ? 0 : 1);
+    cout<<"s"<<s_x<<" "<<s_y<<endl;
+    cout<<"t"<<t_x<<" "<<t_y<<endl;
     pair<int,int>& s_layer_range = layer_range(s_x,s_y);
     pair<int,int>& t_layer_range = layer_range(t_x,t_y);
     int width = _placement->_boundary_width;
@@ -1290,6 +1423,8 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     // height = abs(height) + 1;
     int left_bound = min(s_x,t_x);
     int lower_bound = min(s_y,t_y);
+    cout<<"width: "<<width<<endl;
+    cout<<"height: "<<height<<endl;
     Congestion via_grid(width,height,layer_num,INFINITY);
     // true means 2D , false means z direction
     // cout<<"origianl coluumn "<<via_grid(s_x,s_y,s_layer+2)<<endl;
@@ -1299,7 +1434,7 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     if(s_y != t_y){
         Horizontal = false;
     }
-    // cout<<"insertion"<<endl;
+    cout<<"insertion"<<endl;
     if(Horizontal){
         assert(s_y == t_y);
         code = (s_x > t_x ) ? 3 : 2;
@@ -1310,7 +1445,6 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
         code = (s_y > t_y ) ? 1 : 0;
         original_dir = (s_y > t_y ) ? Pos_y : Neg_y;
     }
-    // cout<<"code is "<<code<<endl;
     if(min_layer == -1){
         min_layer = ( Horizontal ) ? 0 : 1;
     }
@@ -1588,7 +1722,8 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
         if( cur_dir != next_dir ){
             // new bend construction
             // update demand map
-            Bend* source_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer);
+            Bend* source_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer, NULL, target_bend);
+            target_bend->set_prev(source_bend);
             Segment new_segment(source_bend , target_bend);
             // new_segment.print();
             segment_of_netlist[ net_idx ].push_back( new_segment ); 
@@ -1596,6 +1731,7 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
         }
         
     }    while((travel_idx != source_idx) );
+    
     while ( layer != s_layer ){
         cur_dir = via_dir[norm_x][norm_y][layer];
         // cout<<"cur_dir: "<<cur_dir<<endl;
@@ -1621,7 +1757,7 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
             target_bend = source_bend;
         }
     }
-
+    Add_demand_3D(target_bend);
     if(t_layer_range.first == -1 ){
         t_layer_range.first = min_cost_layer;
         t_layer_range.second = min_cost_layer;
@@ -1775,58 +1911,92 @@ int Router::layer_assignment_straight_line_old_method(Bend* a, Bend*b , int m1){
     }
 }
 
+bool Router::check_demand(){
+    int width =  _placement->_boundary_width;
+    int height = _placement->_boundary_height;
+    int layer = _placement->_numLayers;
+    int s = 0;
+    for( size_t x = 0 ; x < width; x++){
+        for(size_t y = 0; y < height; y++){
+            for(size_t z = 0; z < layer; z++){
+                if( (*supply_grid_map)(x,y,z) < (*demand_grid_map)(x,y,z) ){
+                    // cout<<"boom"<<endl;
+                    s++;
+                    // return false;
+                }
+            }
+        }
+    }
+    cout<<"boom number"<<s<<endl;
+    return true;
+}
+
 int Router::write_result(int net_idx , int& total_wire){
-    int branch_size = branch_of_netlist[net_idx].size();
+    int segment_size = segment_of_netlist[net_idx].size();
     int wire = 0;
-    int segment = 0;
+    int segment = segment_size;
     int norm_x_factor = _placement->_leftBoundary;
     int norm_y_factor = _placement->_bottomBoundary;
     int norm_z_factor = 1;
+
+    for(int i = 0 ; i < segment_size; i++){
+        Bend* a = segment_of_netlist[net_idx][i].source;
+        Bend* b = segment_of_netlist[net_idx][i].target;
+        int a_x = a->_x + norm_x_factor;
+        int a_y = a->_y + norm_y_factor;
+        int a_z = a->_z + norm_z_factor;
+        int b_x = b->_x + norm_x_factor;
+        int b_y = b->_y + norm_y_factor; 
+        int b_z = b->_z + norm_z_factor;
+        wire += (abs(a_z - b_z) + abs(a_y - b_y) + abs(a_x - b_x) );
+    }
+
+
     // cout<<_placement -> _netArray[net_idx] ->getName() <<endl; 
     // cout<<"total branch"<<branch_size<<endl;
-    if(branch_size == 1) return 0;
-    for( int i = 0; i < branch_size; i++){
-        branch * trav = branch_of_netlist[net_idx][i];
-        // cout<<trav->_x<<" "<<trav->_y<<" "<<trav->_z<<" ";
-        int n = trav->_n;
-        if( n >= branch_size) continue;
-        assert( n < branch_size);
-        branch * n_trav = branch_of_netlist[net_idx][n];
-        // cout<<n_trav->_x<<" "<<n_trav->_y<<" "<<n_trav->_z<<" ";
+    // if(branch_size == 1) return 0;
+    // for( int i = 0; i < branch_size; i++){
+    //     branch * trav = branch_of_netlist[net_idx][i];
+    //     // cout<<trav->_x<<" "<<trav->_y<<" "<<trav->_z<<" ";
+    //     int n = trav->_n;
+    //     if( n >= branch_size) continue;
+    //     assert( n < branch_size);
+    //     branch * n_trav = branch_of_netlist[net_idx][n];
+    //     // cout<<n_trav->_x<<" "<<n_trav->_y<<" "<<n_trav->_z<<" ";
 
-        int a_x = trav->_x + norm_x_factor;
-        int a_y = trav->_y + norm_y_factor;
-        int a_z = trav->_z + norm_z_factor;
-        int b_x = n_trav->_x + norm_x_factor;
-        int b_y = n_trav->_y + norm_y_factor; 
-        int b_z = n_trav->_z + norm_z_factor;
-        // cout<<"the two point"<<endl;
-        // cout<<a_y<<" "<<a_x<<" "<<a_z<<endl;
+    //     int a_x = trav->_x + norm_x_factor;
+    //     int a_y = trav->_y + norm_y_factor;
+    //     int a_z = trav->_z + norm_z_factor;
+    //     int b_x = n_trav->_x + norm_x_factor;
+    //     int b_y = n_trav->_y + norm_y_factor; 
+    //     int b_z = n_trav->_z + norm_z_factor;
+    //     // cout<<"the two point"<<endl;
+    //     // cout<<a_y<<" "<<a_x<<" "<<a_z<<endl;
         
-        // cout<<b_y<<" "<<b_x<<" "<<b_z<<endl;
-        if(a_z == -1 || b_z == -1) continue;
-        int z = max(a_z,b_z);
-        if( z > _placement->_numLayers) {
-            fail_segment++;
-            continue;
-        }
-        if(a_x == b_x && a_y == b_y && a_z == b_z) continue;
-        if(a_x == b_x && a_y == b_y ){
-            wire += (labs(a_z - b_z));
-            segment++;
-            // cout<<wire<<endl;
-        }
-        if(a_y == b_y && a_z == b_z){
-            wire += (labs(a_x - b_x));
-            segment++;
-            // cout<<wire<<endl<<endl;
-        }
-        if(a_x == b_x && a_z == b_z){
-            wire += (labs(a_y - b_y));
-            segment++;
-            // cout<<wire<<endl<<endl;
-        }
-    }
+    //     // cout<<b_y<<" "<<b_x<<" "<<b_z<<endl;
+    //     if(a_z == -1 || b_z == -1) continue;
+    //     int z = max(a_z,b_z);
+    //     if( z > _placement->_numLayers) {
+    //         fail_segment++;
+    //         continue;
+    //     }
+    //     if(a_x == b_x && a_y == b_y && a_z == b_z) continue;
+    //     if(a_x == b_x && a_y == b_y ){
+    //         wire += (labs(a_z - b_z));
+    //         segment++;
+    //         // cout<<wire<<endl;
+    //     }
+    //     if(a_y == b_y && a_z == b_z){
+    //         wire += (labs(a_x - b_x));
+    //         segment++;
+    //         // cout<<wire<<endl<<endl;
+    //     }
+    //     if(a_x == b_x && a_z == b_z){
+    //         wire += (labs(a_y - b_y));
+    //         segment++;
+    //         // cout<<wire<<endl<<endl;
+    //     }
+    // }
     total_wire += wire;
     // cout<<"total wirelength: "<<wire<<endl;
     return segment;
@@ -1854,54 +2024,51 @@ void Router::writeResult(fstream &outFile){
 }
 
 void Router::writeResult(int net_idx,fstream &outFile ){
-    int branch_size = branch_of_netlist[net_idx].size();
+    int segment_size = segment_of_netlist[net_idx].size();
     int wire = 0;
     int segment = 0;
     int norm_x_factor = _placement->_leftBoundary;
     int norm_y_factor = _placement->_bottomBoundary;
     int norm_z_factor = 1;
-    
-    if(branch_size == 1) return ;
-    for( int i = 0; i < branch_size; i++){
-        branch * trav = branch_of_netlist[net_idx][i];
-        // cout<<trav->_x<<" "<<trav->_y<<" "<<trav->_z<<" ";
-        int n = trav->_n;
-        if( n >= branch_size) continue;
-        assert( n < branch_size);
-        branch * n_trav = branch_of_netlist[net_idx][n];
-        // cout<<n_trav->_x<<" "<<n_trav->_y<<" "<<n_trav->_z<<" ";
 
-        int a_x = trav->_x + norm_x_factor;
-        int a_y = trav->_y + norm_y_factor;
-        int a_z = trav->_z + norm_z_factor;
-        int b_x = n_trav->_x + norm_x_factor;
-        int b_y = n_trav->_y + norm_y_factor; 
-        int b_z = n_trav->_z + norm_z_factor;
-        // cout<<"the two point"<<endl;
-        if(a_z == -1 || b_z == -1) continue;
-        int z = max(a_z,b_z);
-        if( z > _placement->_numLayers) continue;
-        if(a_x == b_x && a_y == b_y && a_z == b_z) continue;
-        // if(a_x == b_x && a_y == b_y ){
-        //     wire += (labs(a_z - b_z));
-        //     segment++;
-        //     // cout<<wire<<endl;
-        // }
-        // if(a_y == b_y && a_z == b_z){
-        //     wire += (labs(a_x - b_x));
-        //     segment++;
-        //     // cout<<wire<<endl<<endl;
-        // }
-        // if(a_x == b_x && a_z == b_z){
-        //     wire += (labs(a_y - b_y));
-        //     segment++;
-        //     // cout<<wire<<endl<<endl;
-        // }
+    for(int i = 0 ; i < segment_size; i++){
+        Bend* a = segment_of_netlist[net_idx][i].source;
+        Bend* b = segment_of_netlist[net_idx][i].target;
+        int a_x = a->_x + norm_x_factor;
+        int a_y = a->_y + norm_y_factor;
+        int a_z = a->_z + norm_z_factor;
+        int b_x = b->_x + norm_x_factor;
+        int b_y = b->_y + norm_y_factor; 
+        int b_z = b->_z + norm_z_factor;
         outFile<<a_y<<" "<<a_x<<" "<<a_z<<" ";
         outFile<<b_y<<" "<<b_x<<" "<<b_z<<" ";
         outFile<<_placement -> _netArray[net_idx] ->getName() <<endl; 
     }
-    // total_wire += wire;
-    // cout<<"total wirelength: "<<wire<<endl;
-    // return segment;
+    
+    // if(branch_size == 1) return ;
+    // for( int i = 0; i < branch_size; i++){
+    //     branch * trav = branch_of_netlist[net_idx][i];
+    //     // cout<<trav->_x<<" "<<trav->_y<<" "<<trav->_z<<" ";
+    //     int n = trav->_n;
+    //     if( n >= branch_size) continue;
+    //     assert( n < branch_size);
+    //     branch * n_trav = branch_of_netlist[net_idx][n];
+    //     // cout<<n_trav->_x<<" "<<n_trav->_y<<" "<<n_trav->_z<<" ";
+
+    //     int a_x = trav->_x + norm_x_factor;
+    //     int a_y = trav->_y + norm_y_factor;
+    //     int a_z = trav->_z + norm_z_factor;
+    //     int b_x = n_trav->_x + norm_x_factor;
+    //     int b_y = n_trav->_y + norm_y_factor; 
+    //     int b_z = n_trav->_z + norm_z_factor;
+    //     // cout<<"the two point"<<endl;
+    //     if(a_z == -1 || b_z == -1) continue;
+    //     int z = max(a_z,b_z);
+    //     if( z > _placement->_numLayers) continue;
+    //     if(a_x == b_x && a_y == b_y && a_z == b_z) continue;
+        
+    //     outFile<<a_y<<" "<<a_x<<" "<<a_z<<" ";
+    //     outFile<<b_y<<" "<<b_x<<" "<<b_z<<" ";
+    //     outFile<<_placement -> _netArray[net_idx] ->getName() <<endl; 
+    // }
 }

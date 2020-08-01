@@ -86,6 +86,10 @@ public:
     void Add_demand( Bend* , double );
     void Add_demand_H(int,int,int,int,double);
     void Add_demand_V(int,int,int,int,double);
+    void Add_demand_3D(Bend*,double);
+    void Add_demand_3D_H(int,int,int,int,double f);
+    void Add_demand_3D_V(int,int,int,int,double f);
+    void Add_demand_3D_Z(int,int,int,int,double f);
     void Exclude_demand( Bend* , double );
     void Exclude_demand_H(int,int,int,int,double);
     void Exclude_demand_V(int,int,int,int,double);
@@ -94,6 +98,7 @@ public:
     
     void compute_total_net_length();
     void compute_one_net_length(int);
+    void sort_net();
     void update_distance_of_branch();
     void update_distance_of_branch_in_one_net(int);
 
@@ -105,7 +110,8 @@ public:
     void layer_assignment_two_pin_net(int,two_pin_net);
     void z_dirertion_layer_assignment(branch*,branch*);
     void update_cost_map();
-     
+    
+    
     // main function
     void route() ;
     void construct_congestion_map();
@@ -116,6 +122,9 @@ public:
     int write_result(int,int&);
     void writeResult(fstream& );
     void writeResult(int,fstream&);
+
+    //check function
+    bool check_demand();
     
 private:
     Placement * _placement;

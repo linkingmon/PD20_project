@@ -6,6 +6,8 @@
 #include <iostream>
 #include <map>
 #include <cstdlib>
+#include <limits.h>
+#include <numeric>      // std:;iota
 // #include "router.h"
 
 using namespace std;
@@ -113,7 +115,7 @@ public:
 class branch{
 public:
     branch() {}
-    branch(int x, int y, int z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n){}
+    branch(int x, int y, int z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n),dist_to_pin(INT_MAX){}
     int _x;     //row index 
     int _y;     //column index
     int _z;     //layer index
@@ -121,7 +123,7 @@ public:
     int  _id;    //index
     int dist_to_pin;    //distance to the nearest pin (segment number)
     bool operator == (branch a) {return (_x == a._x && _y == a._y); }
-    friend ostream& operator<<(ostream& os, const branch& a){ os<< "("<< a._x <<","<<a._y<<","<<a._z<<")   index: "<<a._id<<" neighbor: "<<a._n; return os;}
+    friend ostream& operator<<(ostream& os, const branch& a){ os<< "("<< a._x <<","<<a._y<<","<<a._z<<")   index: "<<a._id<<" neighbor: "<<a._n <<" distance "<<a.dist_to_pin; return os;}
 };
 
 // template<class data>
@@ -175,7 +177,7 @@ public:
 private:
     branch* b_source;
     branch* b_target;
-    Bend* source; //staring point
+    Bend* source; //starting point
     int segment_len;
 
 };
@@ -239,4 +241,21 @@ public:
     int distance;
     void print() {source->print();target->print();}
 };
+
+template <typename T>
+vector<size_t> sort_indexes(const vector<T> &v) {
+
+  // initialize original index locations
+  vector<size_t> idx(v.size());
+  iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v
+  // using std::stable_sort instead of std::sort
+  // to avoid unnecessary index re-orderings
+  // when v contains elements of equal values 
+  stable_sort(idx.begin(), idx.end(), [&v](size_t i1, size_t i2) {return *(v[i1]) < *(v[i2]); } );
+
+  return idx;
+}
+
 #endif // STRUC_H
