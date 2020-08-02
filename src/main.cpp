@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     // running placment
     print_start("Run placement");
     Placer *placer = new Placer(placement);
-    // placer->place();
+    placer->place();
     print_end();
 
     // running routing
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 
     // write result
     print_start("Write result to file");
-    placement->writeResult(output); // write move cells 
+    placer->writeResult(output); // write move cells 
     router->writeResult(output); // write routing wires
     print_end();
 

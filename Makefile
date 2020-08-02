@@ -11,7 +11,7 @@
 
 CC=g++
 LDFLAGS=-std=c++11 -O3 -lm -g
-SOURCES=src/placement.cpp src/main.cpp src/placer.cpp src/router.cpp src/utils.cpp src/mst.cpp src/maze_router.cpp src/LayerAssign.cpp flute/flute.c flute/dist.c flute/dl.c flute/err.c flute/heap.c flute/mst2.c flute/neighbors.c \
+SOURCES=src/placement.cpp src/main.cpp src/placer.cpp src/router.cpp src/utils.cpp src/mst.cpp src/maze_router.cpp flute/flute.c flute/dist.c flute/dl.c flute/err.c flute/heap.c flute/mst2.c flute/neighbors.c \
 	flute/bookshelf_IO.c flute/memAlloc.c flute/flute_mst.c 
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=pr
