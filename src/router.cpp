@@ -1170,7 +1170,7 @@ void Router::layer_assignment_one_net(int net_idx){
     bool Horizontal = true;
     int min_layer = _placement -> _netArray[net_idx]->getMinLayer();
     // int net_idx = 0;
-    cout<<"layer assignment about segement"<<endl;
+    cout<<"layer assignment about segement Net: "<<net_idx<<endl;
     cout<<"total segment: "<< total_number_segment <<endl;
     for (int i = 0; i < total_segment.size(); i++){
         cout<<"the i is "<< i << " size "<< total_segment[i].size()<<endl;
@@ -1403,7 +1403,6 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     assert(source != NULL);
     assert(target != NULL);
     int s_x = source->_x;
-    cout<<"?"<<endl;
     int s_y = source->_y;
     int s_layer = source->_z;
     int t_x = target->_x;
