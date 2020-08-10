@@ -156,17 +156,17 @@ void Shortest_Path::Dijkstra(){
     // Coordinate point_min = min_Heap.top();
     // cout<<c_min.distance<<endl;
     while (!min_Heap.empty()) {
-        cout<<"before extractmin"<<endl;
-        min_Heap.print_heap();
+        // cout<<"before extractmin"<<endl;
+        // min_Heap.print_heap();
         Coordinate* point_min = min_Heap.ExtractMin();
-        cout<<"after extractmin"<<endl;
-        min_Heap.print_heap();
+        // cout<<"after extractmin"<<endl;
+        // min_Heap.print_heap();
 
         int p1_x = point_min->x - left_bound;
         int p1_y = point_min->y - bottom_bound;
-        cout << endl;
-        cout << "new extract min "<<endl;
-        cout << "p1 x is "<<p1_x + left_bound <<" p1 y is "<<p1_y + bottom_bound<<" distance is :"<< grid_point_pointer[p1_x][p1_y]->distance << endl; 
+        // cout << endl;
+        // cout << "new extract min "<<endl;
+        // cout << "p1 x is "<<p1_x + left_bound <<" p1 y is "<<p1_y + bottom_bound<<" distance is :"<< grid_point_pointer[p1_x][p1_y]->distance << endl; 
         visited[p1_x][p1_y] = true;
         
         // find end point
@@ -197,13 +197,13 @@ void Shortest_Path::Dijkstra(){
                 }
             }
             if(visited[p2_x][p2_y] == true) continue;
-            cout<<" update distance "<< (*iter).second <<endl;
+            // cout<<" update distance "<< (*iter).second <<endl;
             bool D_bool = Relax( grid_point_pointer[p1_x][p1_y], grid_point_pointer[p2_x][p2_y], (*iter).second);
-            cout << endl;
-            cout << "update neighbor"<<endl;
-            cout << "p2 x is "<<p2_x + left_bound<<" p2 y is "<<p2_y + bottom_bound<< " distance is :"<< grid_point_pointer[p2_x][p2_y]->distance << endl; 
-            cout << "visited: "<< visited[p2_x][p2_y] << " inside_min_heap : " <<inside_min_heap[p2_x][p2_y]<<endl;
-            cout << endl;
+            // cout << endl;
+            // cout << "update neighbor"<<endl;
+            // cout << "p2 x is "<<p2_x + left_bound<<" p2 y is "<<p2_y + bottom_bound<< " distance is :"<< grid_point_pointer[p2_x][p2_y]->distance << endl; 
+            // cout << "visited: "<< visited[p2_x][p2_y] << " inside_min_heap : " <<inside_min_heap[p2_x][p2_y]<<endl;
+            // cout << endl;
 
             if(inside_min_heap[p2_x][p2_y] == true ){
                 if(D_bool){
@@ -469,11 +469,11 @@ void Shortest_Path::Build_the_path(){
     Coordinate* temp = grid_point_pointer[t_x][t_y];
     Coordinate* n_temp;
 
-    cout<< "from ( " <<source_x <<" , "<<source_y<<" )"<<endl;
-    cout<< "to   ( " <<target_x <<" , "<<target_y<<" )"<<endl;
+    // cout<< "from ( " <<source_x <<" , "<<source_y<<" )"<<endl;
+    // cout<< "to   ( " <<target_x <<" , "<<target_y<<" )"<<endl;
 
     // check the first path is H/V
-    cout<<"build path"<<endl;
+    // cout<<"build path"<<endl;
     if(temp->H_bend == true){
         n_temp = temp->H_predecessor;
         last_H_dir = true;
@@ -488,7 +488,7 @@ void Shortest_Path::Build_the_path(){
     // cout<<*temp<<endl;
     // cout<<*n_temp<<endl;
     assert(n_temp != NULL);
-    cout<<"while loop"<<endl;
+    // cout<<"while loop"<<endl;
     while(temp != grid_point_pointer[s_x][s_y]){
         if(temp->H_bend == true){
             n_temp = temp->H_predecessor;
@@ -504,7 +504,7 @@ void Shortest_Path::Build_the_path(){
             assert( n_temp -> x == temp -> x);
             H_dir = false;
         }
-        cout<<*temp<<endl;
+        // cout<<*temp<<endl;
         // if(n_temp->x == temp->x ){
         //    H_dir = false; 
         // }
@@ -525,7 +525,7 @@ void Shortest_Path::Build_the_path(){
         }
         temp = n_temp;
     }
-    cout<<*temp<<endl;
+    // cout<<*temp<<endl;
     // target_bend->print();
     // target_bend = target_bend -> get_next();
     if( target_bend == NULL){
@@ -534,7 +534,7 @@ void Shortest_Path::Build_the_path(){
     }
     // target_bend -> set_prev(NULL);
     // return;
-    cout<<"last bend"<<endl;
+    // cout<<"last bend"<<endl;
     n_bend = new Bend(temp->x, temp->y, temp->z, NULL, cur_bend);
     cur_bend -> set_prev( n_bend );
     // n_bend -> print();

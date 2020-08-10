@@ -108,6 +108,8 @@ public:
     int  layer_assignment_straight_line_H(Bend*,Bend*,int,double);
     void layer_assignment_one_net(int);
     void layer_assignment_two_pin_net(int,two_pin_net);
+    void layer_assignment_of_pin(int);
+    void layer_assignment_layer_range(int);
     void z_dirertion_layer_assignment(branch*,branch*);
     void update_cost_map();
     
@@ -132,9 +134,10 @@ private:
     vector<two_pin_net*> twopin_netlist_Z;
     Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map;            //congestion of row
     Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map;            //congestion of column
-    Congestion* supply_grid_map, * supply_grid_2Dmap;        //supply of total grid
+    Congestion* supply_grid_map, * supply_grid_2Dmap;       //supply of total grid
     Congestion* demand_grid_map, * demand_grid_2Dmap;       //demand of total grid
-    Two_Dimension_map< pair<int,int>>   layer_range;
+    Two_Dimension_map< pair<int,int>>   layer_range;        //the layer range of total 2D grid of one net
+    vector<pair<int,int>>               LR_index;           //the modified layer range index
     vector<vector<Grid*>> grid_map;     //grid map include cell information 
     vector<double> x_expand_factor;     //expansion factor of x
     vector<double> x_expand_result;     //expansion result of x

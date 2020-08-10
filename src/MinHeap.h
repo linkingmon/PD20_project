@@ -270,15 +270,15 @@ public:
                 break;
             _data[p-1] =  _data [t-1] ;
             update_position(p-1);
-            cout<<"p idx "<< p <<endl;
-            cout<<"t idx "<< t <<endl;
+            // cout<<"p idx "<< p <<endl;
+            // cout<<"t idx "<< t <<endl;
             p = t ;
             t = p * 2 ;
         }
         _data[p-1] = _data[ size() -1 ] ;
         update_position(p-1);
-        cout<<*_data[p-1]<<endl;
-        cout<<"idx "<<p-1<<endl;
+        // cout<<*_data[p-1]<<endl;
+        // cout<<"idx "<<p-1<<endl;
         _data.pop_back();
 
     }

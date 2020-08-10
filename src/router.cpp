@@ -39,6 +39,7 @@ void Router::route(){
 
     projection_to_2D();
     supply_from_grid_to_edge();
+    // return;
     x_expand_factor.resize(_placement->_boundary_width-1,1.5);
     y_expand_factor.resize(_placement->_boundary_height-1,1.5);
     x_expand_result.resize(_placement->_boundary_width);
@@ -113,13 +114,14 @@ void Router::construct_supply_demand_map(){
     // defult supply
     // cout<<"default supply"<<endl;
     for(size_t layer = 0 ; layer < layer_num ; layer++){
-        int default_supply = _placement->layers[layer]->get_supply();
-        vector<vector<double>> one_layer_cong = (vector<vector<double>>(width , vector<double>(height,default_supply)) );
+        double default_supply = _placement->layers[layer]->get_supply();
+        vector<vector<double>> one_layer_cong = (vector<vector<double>>(height , vector<double>(width,default_supply)) );
         supply_grid_map->set_congestion_map(layer,one_layer_cong);
     }
 
     // non_defult supply 
     // cout<<"non default F"<<endl;
+    (*supply_grid_map).print_congestion();
     size_t non_default_num = _placement->_numNonDefault;
     for(size_t i = 0 ; i < non_default_num ; i++){
         int x = _placement->nondefault[i]->_x - norm_x_factor;
@@ -129,7 +131,7 @@ void Router::construct_supply_demand_map(){
         // cout<<"x is "<<x<<" y is "<<y<<" z is "<<z<<" offset is " <<offset<<endl;
         (*supply_grid_map)(x,y,z) += offset;
     }
-    
+    // (*supply_grid_map).print_congestion();
     // add block demand
     size_t cell_num = _placement->_numCells;
     for(size_t i = 0 ; i < cell_num ; i++){
@@ -192,6 +194,7 @@ void Router::construct_supply_demand_map(){
             }
         }
     }       
+    
 }
 
 void Router::two_pin_net_L_routing(Pin* a  , Pin* b){
@@ -632,7 +635,7 @@ void Router::A_star_search_routing(){
 }
 
 void Router::update_cost_map(){
-    double h = 0.01;
+    double h = 0.1;
     double k = 1;
     int width = _placement->_boundary_width;
     int height = _placement->_boundary_height;
@@ -641,13 +644,13 @@ void Router::update_cost_map(){
     for(int x = 0 ; x < width-1  ; x++){
         for(int y = 0 ; y < height; y++){
 
-            (*cost_row_map)(x,y,0) = 1 + h/(1+exp(-k * (*demand_row_map)(x,y,0) - (*supply_row_map)(x,y,0))) ;
+           (*cost_row_map)(x,y,0) = 1 + h/(1+exp(-k * ((*demand_row_map)(x,y,0) - (*supply_row_map)(x,y,0)))) ;
         }
     }
     
     for(int x = 0 ; x < width ; x++){
         for(int y = 0 ; y < height-1 ; y++){
-           (*cost_col_map)(x,y,0) = 1 + h/(1+exp(-k * (*demand_col_map)(x,y,0) - (*supply_col_map)(x,y,0))) ;
+           (*cost_col_map)(x,y,0) = 1 + h/(1+exp(-k * ((*demand_col_map)(x,y,0) - (*supply_col_map)(x,y,0)))) ;
         }
     }
 }
@@ -661,7 +664,7 @@ Tree Router::Flute_function(vector<double> a, vector<double> b){
 
     flutetree = flute(d, x, y, ACCURACY);
     // printf("FLUTE wirelength = %lf\n", flutetree.length);
-    // printtree(flutetree);
+    printtree(flutetree);
 
     flutewl = flute_wl(d, x, y, ACCURACY);
     // printf("FLUTE wirelength (without RSMT construction) = %lf\n", flutewl);
@@ -680,6 +683,7 @@ void Router::construct_two_pin_net( Net* a, int idx){
         Cell* c = _placement->getCell( a->getPin(j)->getcellId());
         x[j] = c->getx() - norm_x_factor;
         y[j] = c->gety() - norm_y_factor;
+        // cout<<"index: "<<j<<" x: "<<x[j]<<" y: "<<y[j]<<endl;
     }
     // if( pin_num <= 2){
     //     int z = 0;
@@ -705,7 +709,7 @@ void Router::construct_two_pin_net( Net* a, int idx){
         int n = t.branch[i].n;
         double  z = a->getPin(i)->get_layer();
         branch* b = new branch( p1_x, p1_y, z, i, n); 
-        // cout<<"index: "<<i<<" x: "<<p1_x<<" y: "<<p1_y<<endl;
+        cout<<"index: "<<i<<" x: "<<p1_x<<" y: "<<p1_y<<" z: "<<z<<endl;
         
         it = dummy_node_map.find( make_pair(p1_x,p1_y) );
         if( it == dummy_node_map.end()){
@@ -904,7 +908,10 @@ void Router::Add_demand(Bend* start, double f){        //2D
 void Router::Add_demand_3D(Bend* s, double f = 1){
     Bend* trav = s;                 //traverse
     Bend* n_trav = trav->get_next();    //next traverse
+    cout<<"ADD DEMAND 3D"<<endl;
+    trav->print();
     while(n_trav != NULL){
+        n_trav->print();
         if(trav->_x != n_trav->_x){         //Horizontal
             Add_demand_3D_H(trav->_x, n_trav->_x, trav->_y, trav->_z, f);
         }
@@ -917,6 +924,7 @@ void Router::Add_demand_3D(Bend* s, double f = 1){
         trav = n_trav;
         n_trav = trav->get_next();
     }
+    (*demand_grid_map)(trav->_x,trav->_y,trav->_z) += f;
 }
 
 void Router::Add_demand_H( int x1, int x2, int y, int z, double f){
@@ -936,27 +944,44 @@ void Router::Add_demand_V( int x, int y1, int y2, int z, double f){
 }
 
 void Router::Add_demand_3D_H(int x1, int x2, int y, int z, double f ){
-    if(x1 > x2) 
-        swap(x1,x2); //make x1 < x2
-    for(int x = x1; x < x2; x++){
-        (*demand_grid_map)(x,y,z) += f;
-    }
+    // if(x1 > x2) 
+    //     swap(x1,x2); //make x1 < x2
+    if(x1 < x2)
+        for(int x = x1; x < x2; x++){
+            (*demand_grid_map)(x,y,z) += f;
+        }
+    else if(x1 > x2)
+        for(int x = x1; x > x2; x--){
+            (*demand_grid_map)(x,y,z) += f;
+        }
 }
 
 void Router::Add_demand_3D_V(int x, int y1, int y2, int z, double f ){
-    if(y1 > y2) 
-        swap(y1,y2); //make y1 < y2
-    for(int y = y1; y < y2; y++){
-        (*demand_grid_map)(x,y,z) += f;
-    }
+
+    // if(y1 > y2) 
+    //     swap(y1,y2); //make y1 < y2
+    if(y1 < y2)
+        for(int y = y1; y < y2; y++){
+            (*demand_grid_map)(x,y,z) += f;
+        }
+    else if(y1 > y2)
+        for(int y = y1; y > y2; y--){
+            (*demand_grid_map)(x,y,z) += f;
+        }
 }
 
 void Router::Add_demand_3D_Z(int x, int y, int z1, int z2, double f ){
-    if(z1 > z2) 
-        swap(z1,z2); //make z1 < z2
-    for(int z = z1; z < z2; z++){
-        (*demand_grid_map)(x,y,z) += f;
-    }
+
+    // if(z1 > z2) 
+    //     swap(z1,z2); //make z1 < z2
+    if(z1 < z2)
+        for(int z = z1; z < z2; z++){
+            (*demand_grid_map)(x,y,z) += f;
+        }
+    else if(z1 > z2)
+        for(int z = z1 ; z < z2; z--){
+            (*demand_grid_map)(x,y,z) += f;
+        }
 }
 
 void Router::Exclude_demand(Bend* start, double f){        //2D and we need remove the bend
@@ -1077,6 +1102,7 @@ void Router::layer_assignment_one_net(int net_idx){
 
     pair<int,int> initial_pair = make_pair(-1,-1);
     layer_range = Two_Dimension_map<pair<int,int>>(width,height,initial_pair);
+    layer_assignment_of_pin(net_idx);
     vector<vector<Segment>> total_segment;    
     int pin_num = _placement -> _netArray[net_idx] -> getPin_num();
     int total_number_segment = 0;
@@ -1098,6 +1124,10 @@ void Router::layer_assignment_one_net(int net_idx){
         cout<<"dist to pin: s: "<<s_to_pin<<" t: "<<t_to_pin<<endl;
         if( total_segment.capacity() < max_dist_to_pin ) total_segment.resize(max_dist_to_pin);
         Bend* travel = two_pin_netlist[net_idx][i].source;
+       
+        if(s->_z != -1)    
+            travel->_z = s->_z;
+     
         int n = 0;
         if( s_to_pin <= t_to_pin){
             int d = s_to_pin ;
@@ -1119,13 +1149,16 @@ void Router::layer_assignment_one_net(int net_idx){
                 d--;
                 assert(travel != NULL);
             }
+            Bend* next_bend;
             for ( ; n < seg_len ; n++ ,d--){
-                Bend* next_bend = travel->get_next();
+                next_bend = travel->get_next();
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
                 assert(travel != NULL);
                 // cout<<"n is "<<n<<" d is "<<d<<endl;
             }
+            if(t -> _z != -1)
+                next_bend -> _z = t -> _z;
         }
         else if( s_to_pin > t_to_pin){
             cout<<"================="<<endl;
@@ -1153,13 +1186,16 @@ void Router::layer_assignment_one_net(int net_idx){
                 d--;
                 assert(travel != NULL);
             }
+            Bend* next_bend ;
             for ( ; n < seg_len ; n++, d--){
-                Bend* next_bend = travel->get_next();
+                next_bend = travel->get_next();
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
                 // cout<<"decreasing... n is "<<n<<" d is "<<d<<endl;
                 assert(travel != NULL);
             }
+            // if(t -> _z != -1)
+            //     next_bend -> _z = t -> _z;
         }        
         // cout<<"n = "<< n << " seg_length = "<< seg_len << " half seg_length = "<< seg_len/2 <<endl;
         // cout<<"total segment: capacity: "<<total_segment.capacity()<<" size "<<total_segment.size()<<endl;
@@ -1185,6 +1221,7 @@ void Router::layer_assignment_one_net(int net_idx){
             layer_assignment_straight_line(source, target, min_layer,net_idx);
         }
     }
+    layer_assignment_layer_range(net_idx);
 }
 
 void Router::compute_total_net_length(){
@@ -1409,8 +1446,8 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     int t_y = target->_y;
     int t_z = target->_z;
     bool limit_range = (t_z == -1 ? 0 : 1);
-    cout<<"s"<<s_x<<" "<<s_y<<endl;
-    cout<<"t"<<t_x<<" "<<t_y<<endl;
+    cout<<"s "<<s_x<<" "<<s_y<<" "<<s_layer<<endl;
+    cout<<"t "<<t_x<<" "<<t_y<<" "<<t_z<<endl;
     pair<int,int>& s_layer_range = layer_range(s_x,s_y);
     pair<int,int>& t_layer_range = layer_range(t_x,t_y);
     int width = _placement->_boundary_width;
@@ -1433,7 +1470,6 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     if(s_y != t_y){
         Horizontal = false;
     }
-    cout<<"insertion"<<endl;
     if(Horizontal){
         assert(s_y == t_y);
         code = (s_x > t_x ) ? 3 : 2;
@@ -1471,9 +1507,12 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     int constraint_layer = (Horizontal) ? 0 : 1;
     int& lower_layer = s_layer_range.first;
     int& upper_layer = s_layer_range.second;
-    cout<<"sourece layer"<<endl;
-    cout<<"from "<<lower_layer<<" to "<<upper_layer<<endl;
+    // cout<<"sourece layer"<<endl;
+    // cout<<"from "<<lower_layer<<" to "<<upper_layer<<endl;
+    cout<<"code is "<<code<<endl;
+    cout<<"min layer "<<min_layer<<endl;
     if( lower_layer == -1 ) {
+        LR_index.push_back( make_pair(s_x,s_y));
         lower_layer = s_layer;
         upper_layer = s_layer;
         // via_grid(s_x-left_bound,s_y-lower_bound, s_layer) = 0;
@@ -1548,8 +1587,8 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
                 break;
             } 
         }
-        // cout<<"current travel index: "<<travel_idx<<endl;
-        // cout<<"norm x "<<norm_x<<" norm_y "<<norm_y<<endl;
+        cout<<"current travel index: "<<travel_idx<<endl;
+        cout<<"norm x "<<norm_x<<" norm_y "<<norm_y<<endl;
         vector<Via_Grid_cost> via_grid_set;
         // (*supply_grid_map).print_congestion();
         // (*demand_grid_map).print_congestion();
@@ -1597,7 +1636,14 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
                 // cout<<"cur idx ("<<x<<","<<y<<","<<z<<")"<<endl;
                 if( (*supply_grid_map)(last_x,last_y,z) > (*demand_grid_map)(last_x,last_y,z) ){
                     via_grid(norm_x,norm_y,z) = via_grid(last_norm_x, last_norm_y, z);
+                    // cout<<"last norm idx ("<<last_norm_x<<","<<last_norm_y<<","<<z<<")"<<endl;
+                    // cout<<"cur norm idx ("<<norm_x<<","<<norm_y<<","<<z<<")"<<endl;
                     // cout<<"past from left"<<endl;
+                }
+                else{
+                    // (*supply_grid_map).print_congestion();
+                    // (*demand_grid_map).print_congestion();
+
                 }
                 available = true;   
             }
@@ -1668,20 +1714,82 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     cout<<endl;
     cout<<"========================"<<endl;
     cout<<"trace back"<<endl;
-    lower_layer = (t_layer_range.first == -1) ? 0 : t_layer_range.first;
-    upper_layer = (t_layer_range.second == -1) ? layer_num : t_layer_range.second;
-    int min_cost_layer ;
+    if(t_layer_range.first == -1 ){
+        t_layer_range.first = t_z;
+        t_layer_range.second = t_z;
+        LR_index.push_back( make_pair(t_x,t_y));
+    }
+    else{
+        if( t_layer_range.first > t_z ){
+            t_layer_range.first = t_z; 
+        }
+        if( t_layer_range.second < t_z){
+            t_layer_range.second = t_z;
+        }
+    } 
+    int t_lower_layer = (t_layer_range.first == -1) ? 0 : t_layer_range.first;
+    int t_upper_layer = (t_layer_range.second == -1) ? layer_num : t_layer_range.second;
+    int min_cost_layer = min_layer;
     double min_cost = INFINITY;
-    for(int z = 0; z < layer_num; z++){
+    // via_grid.print_congestion();
+           
+    // if( !Horizontal && min_cost_layer % 2 == 0)
+    //     ++min_cost_layer;
+    // else if( Horizontal && min_cost_layer % 2 == 1)
+    //     ++min_cost_layer;
+    
+    for(int z = 0; z < t_lower_layer; z++){
+        int extra_target_cost = abs(t_lower_layer - z);
         if(via_grid(t_x-left_bound, t_y-lower_bound, z) < min_cost){
-            min_cost_layer = z;
-            min_cost = via_grid(t_x-left_bound, t_y-lower_bound, z); 
-        } 
+            if(via_grid(t_x-left_bound, t_y-lower_bound, z) + extra_target_cost < min_cost){
+                if( !Horizontal && z % 2 == 1 || Horizontal && z % 2 == 0){
+
+                    min_cost_layer = z;
+                    min_cost = via_grid(t_x-left_bound, t_y-lower_bound, z) + extra_target_cost; 
+                }
+            }
+        }
+    } 
+    for(int z = t_lower_layer; z <= t_upper_layer; z++){
+        if(via_grid(t_x-left_bound, t_y-lower_bound, z) < min_cost){
+            if( !Horizontal && z % 2 == 1 || Horizontal && z % 2 == 0){
+                min_cost_layer = z;
+                min_cost = via_grid(t_x-left_bound, t_y-lower_bound, z) ; 
+            }
+        }
+    }
+    for(int z = t_upper_layer + 1; z < layer_num; z++){
+        int extra_target_cost = abs(z - t_upper_layer );
+        if(via_grid(t_x-left_bound, t_y-lower_bound, z) < min_cost){
+            if(via_grid(t_x-left_bound, t_y-lower_bound, z) + extra_target_cost < min_cost){
+                if( !Horizontal && z % 2 == 1 || Horizontal && z % 2 == 0){
+
+                    min_cost_layer = z;
+                    min_cost = via_grid(t_x-left_bound, t_y-lower_bound, z) + extra_target_cost; 
+                }
+            }
+        }
+    }
+    Bend* target_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, min_cost_layer);
+
+    // need debug
+    
+    if(t_lower_layer > min_cost_layer){
+        // Bend* lower_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, lower_layer, target_bend);   
+        t_layer_range.first =  min_cost_layer;
+        // Segment new_segment(target_bend , lower_bend);
+        // segment_of_netlist[ net_idx ].push_back( new_segment ); 
+    }
+    if(t_upper_layer < min_cost_layer){
+        // Bend* upper_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, upper_layer, target_bend);  
+        t_layer_range.second = min_cost_layer;
+        // Segment new_segment(target_bend , upper_bend);
+        // segment_of_netlist[ net_idx ].push_back( new_segment ); 
+
     }
     Via_Direction cur_dir,next_dir ;
     int layer = min_cost_layer;
     // cout<<"min cost layer"<<layer<<endl;
-    Bend* target_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer);
     do{
         cur_dir = via_dir[norm_x][norm_y][layer];
         // cout<<"cur_dir: "<<cur_dir<<endl;
@@ -1731,39 +1839,45 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
         
     }    while((travel_idx != source_idx) );
     
-    while ( layer != s_layer ){
-        cur_dir = via_dir[norm_x][norm_y][layer];
-        // cout<<"cur_dir: "<<cur_dir<<endl;
-        switch(cur_dir){
-            case(Pos_z):{
-                layer += 1;
-                next_dir = via_dir[norm_x][norm_y][layer];
-                break;
-            }
-            case(Neg_z):{
-                layer -= 1;
-                next_dir = via_dir[norm_x][norm_y][layer];
-                break;
-            }    
-        }
-        if( cur_dir != next_dir ){
-            // new bend construction
-            // update demand map
-            Bend* source_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer);
-            Segment new_segment(source_bend , target_bend);
-            // new_segment.print();
-            segment_of_netlist[ net_idx ].push_back( new_segment ); 
-            target_bend = source_bend;
-        }
+    //do ... until  layer 
+    int final_s_layer = layer;
+    if( final_s_layer < s_layer_range.first ){
+        s_layer_range.first = final_s_layer;
     }
+    if( final_s_layer > s_layer_range.second){
+        s_layer_range.second = final_s_layer;
+    }
+    cout<<"source range:"<<s_layer_range<<endl;
+    cout<<"source range in map:"<<layer_range(s_x,s_y)<<endl;
+    cout<<"target range:"<<t_layer_range<<endl;
+    cout<<"target range in map:"<<layer_range(t_x,t_y)<<endl;
+        
+    // while ( layer != s_layer ){
+    //     cur_dir = via_dir[norm_x][norm_y][layer];
+    //     // cout<<"cur_dir: "<<cur_dir<<endl;
+    //     switch(cur_dir){
+    //         case(Pos_z):{
+    //             layer += 1;
+    //             next_dir = via_dir[norm_x][norm_y][layer];
+    //             break;
+    //         }
+    //         case(Neg_z):{
+    //             layer -= 1;
+    //             next_dir = via_dir[norm_x][norm_y][layer];
+    //             break;
+    //         }    
+    //     }
+    //     if( cur_dir != next_dir ){
+    //         // new bend construction
+    //         // update demand map
+    //         Bend* source_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer);
+    //         Segment new_segment(source_bend , target_bend);
+    //         // new_segment.print();
+    //         segment_of_netlist[ net_idx ].push_back( new_segment ); 
+    //         target_bend = source_bend;
+    //     }
+    // }
     Add_demand_3D(target_bend);
-    if(t_layer_range.first == -1 ){
-        t_layer_range.first = min_cost_layer;
-        t_layer_range.second = min_cost_layer;
-    }
-    else{
-
-    }
     // Bend* source_bend = new Bend(norm_x + left_bound, norm_y + lower_bound, layer);
     // Segment new_segment(source_bend , target_bend);
     // new_segment.print();
@@ -1771,6 +1885,86 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
 
     cout<< "target layer: "<<min_cost_layer <<endl;
     
+}
+
+void Router::layer_assignment_of_pin(int net_idx){
+    // update layer range only 
+    // no need to construct segment
+    LR_index.clear();
+    cout<<"layer assignment of pin, Net: "<<net_idx<<endl;
+    Net* a = _placement -> _netArray[net_idx];
+    int norm_x_factor = _placement->_leftBoundary;
+    int norm_y_factor = _placement->_bottomBoundary;
+    int min_layer_constraint = a -> getMinLayer();
+    for(size_t i = 0 ; i < a->getPin_num(); i++ ){
+        Cell* c = _placement->getCell( a->getPin(i)->getcellId());
+        int pin_x = c->getx() - norm_x_factor;
+        int pin_y = c->gety() - norm_y_factor;
+        int pin_z = a->getPin(i) -> get_layer();
+        // if (pin_z >= min_layer_constraint) continue;
+        pair<int,int>& pl_range = layer_range(pin_x,pin_y);
+        if( pl_range.first == -1 ){
+            pl_range.first = pin_z;
+            pl_range.second = max(pin_z , min_layer_constraint);
+            LR_index.push_back( make_pair(pin_x,pin_y));
+            cout<<"LR index"<<pin_x<<", "<<pin_y<<endl;
+            cout<<"range"<<pl_range.first<<" "<<pl_range.second<<endl;
+            // Bend* lower_bend = new Bend(pin_x, pin_y, pin_z);
+            // Bend* upper_bend = new Bend(pin_x, pin_y, min_layer_constraint, lower_bend);
+            // Add_demand_3D( lower_bend );
+            // Segment new_segment( lower_bend, upper_bend);
+            // segment_of_netlist[ net_idx ].push_back( new_segment ); 
+            continue;
+        }
+        if( pl_range.first > pin_z){
+            pl_range.first = pin_z;
+        }
+        if( pl_range.second < pin_z){
+            pl_range.second = pin_z;
+        }
+
+        // int lower_z = min(pin_z, pl_range.first);
+        // int upper_z = pl_range.second;
+        // if( pl_range.second < min_layer_constraint){
+        //     pl_range.second = min_layer_constraint;
+        //     upper_z = min_layer_constraint;
+        // }
+        // if( lower_z != upper_z){
+            // Bend* lower_bend = new Bend(pin_x, pin_y, lower_z);
+            // Bend* upper_bend = new Bend(pin_x, pin_y, upper_z, lower_bend);
+            // Add_demand_3D( lower_bend );
+            // Segment new_segment( lower_bend, upper_bend);
+            // segment_of_netlist[ net_idx ].push_back( new_segment ); 
+        // }
+            
+    }
+}
+
+void Router::layer_assignment_layer_range(int net_idx){
+
+    cout<<"layer_assignment_layer_range Net: "<<net_idx<<endl;
+
+    for(size_t i = 0; i < LR_index.size(); i++){
+        pair<int,int> cur_index = LR_index[i];
+        int range_x = cur_index.first;
+        int range_y = cur_index.second;
+        pair<int,int> cur_range = layer_range(range_x,range_y);
+        int lower_z = cur_range.first;
+        int upper_z = cur_range.second;
+        assert(lower_z != -1);
+        assert(upper_z != -1);
+        cout<<"x: "<<range_x<<" y: "<<range_y<<endl;
+        cout<<"l_z: "<<lower_z<<" u_z: "<<upper_z<<endl;
+        if(lower_z == upper_z) 
+            continue;
+        Bend* lower_bend = new Bend(range_x, range_y, lower_z);
+        Bend* upper_bend = new Bend(range_x, range_y, upper_z, lower_bend);
+        lower_bend->set_next(upper_bend);
+        Add_demand_3D( lower_bend );
+        Segment new_segment( lower_bend, upper_bend);
+        segment_of_netlist[ net_idx ].push_back( new_segment ); 
+    }
+
 }
 
 int Router::layer_assignment_straight_line_V(Bend* source, Bend* target, int min_layer, double range ){
@@ -1827,6 +2021,8 @@ int Router::layer_assignment_straight_line_V(Bend* source, Bend* target, int min
 int Router::layer_assignment_straight_line_H(Bend* source, Bend* target, int min_layer, double range ){
     
 }
+
+
 
 int Router::layer_assignment_straight_line_old_method(Bend* a, Bend*b , int m1){
     int layer = _placement->_numLayers;
