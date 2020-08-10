@@ -108,6 +108,7 @@ public:
     int _z ;
     Bend* prev_bend;
     Bend* next_bend;
+    bool operator==(const Bend a){ return( a._x == _x && a._y == _y && a._z == _z); }
     // void operator = (Coordinate a){ _x = a.x ; _y = a.y ; _z = a.z; }
 };
  
@@ -235,7 +236,7 @@ public:
 
 class Segment{
 public: 
-    Segment( Bend* s, Bend* t) :source(s),target(t) {}
+    Segment( Bend* s, Bend* t) :source(s),target(t) { if(*(s)==*(t)) {s->print() ; t->print(); exit(-1);}}
     Bend* source;
     Bend* target;
     int distance;
