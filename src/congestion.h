@@ -82,7 +82,7 @@ public:
         return map_2D[y][x];
     }
     // set congestion map with one layer 
-    void cong_map_clear(){  map_2D.clear();}
+    void clear(){  map_2D.clear();}
 
     void print(){
         cout<<endl;

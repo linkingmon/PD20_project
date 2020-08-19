@@ -24,6 +24,24 @@ ostream &operator<<(ostream &s, pair<int,int> p ) {
     return s; 
 } 
 
+void Build_Bend_link_list(const vector<Bend*> &B_list){
+    if(B_list.size() <= 2 )  
+        return;
+
+    Bend* prev = B_list[0]; 
+    Bend* cur = B_list[1];
+    for(size_t i = 1; i < B_list.size(); i++){
+        if( (*B_list[i-1]) == (*B_list[i]) ){
+            continue;
+        } 
+        cur = B_list[i];
+        prev -> set_next( cur );
+        cur -> set_prev( prev );
+        prev = B_list[i];
+    }
+}
+
+
 void Router::route(){
     
     cout << "Routing ..." << endl;
@@ -54,17 +72,26 @@ void Router::route(){
     cout<<" contruct congestion map"<<endl;
     cout<<endl;
     construct_congestion_map();
+
+    cout<<"Z routing"<<endl;
+    Total_net_Z_routing();
+
+    cout<<"3_Bend routing"<<endl;
+    Total_net_Three_Bend_routing();
     cout<<"A star serach routing"<<endl;
     cout<<endl;
-    for(int i = 0; i < 5 ; i++){
+    for(int i = 0; i < 5  ; i++){
         cout<<"the "<<i<<" times A star"<<endl;
         A_star_search_routing();
     }
+        // demand_grid_map->print_congestion();
+        // return;
     cout<<"layer assignment"<<endl;
     cout<<endl; 
     layer_assignment(); 
     check_demand();
     // layer_range.print();    
+    demand_grid_map->print_congestion();
 
     // supply_grid_map->print_congestion();
     // demand_grid_map->print_congestion();
@@ -162,7 +189,7 @@ void Router::construct_supply_demand_map(){
             for( temp_iter = temp_MClist.begin(); temp_iter != temp_MClist.end() ; temp_iter++ ){
                 int MC1_id = temp_iter->first;
                 int MC1_num = temp_iter->second;
-                Master* m1 = _placement->getMCell(MC1_id);
+                Master* m1 = _placement->getMCell(MC1_id); 
                 vector<ExtraDemand> sameDemand = m1->get_sameDemand();
                 vector<ExtraDemand> adjHDemand = m1->get_adjHDemand();
                 size_t s_num = sameDemand.size();
@@ -195,6 +222,26 @@ void Router::construct_supply_demand_map(){
         }
     }       
     
+}
+
+void Router::Total_net_Z_routing(){
+    for(size_t i = 0; i < two_pin_netlist.size(); i++){
+        cout<<"Net : "<<i<<" Z routing"<<endl;
+        for(size_t j = 0; j < two_pin_netlist[i].size(); j++){
+
+            two_pin_net_Z_routing( &two_pin_netlist[i][j] );
+        }
+    }
+}
+
+void Router::Total_net_Three_Bend_routing(){
+    for(size_t i = 0; i < two_pin_netlist.size(); i++){
+        cout<<"Net : "<<i<<" Three Bend routing"<<endl;
+        for(size_t j = 0; j < two_pin_netlist[i].size(); j++){
+
+            two_pin_net_3_bend_routing( &two_pin_netlist[i][j] );
+        }
+    }
 }
 
 void Router::two_pin_net_L_routing(Pin* a  , Pin* b){
@@ -356,6 +403,90 @@ void Router::two_pin_net_Z_routing(Pin*a , Pin*b){
     twopin_netlist_Z.push_back(Z_net);
 }
 
+void Router::two_pin_net_Z_routing(two_pin_net* a){
+
+    //rip-up and re-route
+    Exclude_demand( a->get_source(),1 );
+
+    branch* branch_a = a->b_source;
+    branch* branch_b = a->b_target;
+    // two_pin_net<int>* L_net = new two_pin_net<int>(branch_a,branch_b);
+    int a_x = branch_a->_x;
+    int a_y = branch_a->_y;
+    int a_z = branch_a->_z;
+    int b_x = branch_b->_x;
+    int b_y = branch_b->_y;
+    int b_z = branch_b->_z;
+    int z = 0;
+    
+    Bend* sink = Z_routing(a_x,b_x,a_y,b_y,z);
+    // Bend* Z_bend;
+    // Z_bend = Z_routing(a_x,b_x,a_y,b_y,z);
+
+    a->set_source ( sink );
+    // sink->set_next(Z_bend);
+    // Z_bend->set_prev(sink);
+
+    Add_demand(sink,1);
+
+    // twopin_netlist_Z.push_back(Z_net);
+}
+
+void Router::two_pin_net_3_bend_routing(two_pin_net* a){
+    
+    //rip-up and re-route
+    // cout<<"rip_up and re route"<<endl;
+    Exclude_demand( a->get_source(),1 );
+
+    branch* branch_a = a->b_source;
+    branch* branch_b = a->b_target;
+    // cout<<"get branch"<<endl;
+    // two_pin_net<int>* L_net = new two_pin_net<int>(branch_a,branch_b);
+    int left_bound = 0;
+    int right_bound = left_bound + _placement -> _boundary_width - 1;
+    int bot_bound = 0;
+    int top_bound = bot_bound + _placement -> _boundary_height - 1;
+    int a_x = branch_a->_x;
+    int a_y = branch_a->_y;
+    int a_z = branch_a->_z;
+    int b_x = branch_b->_x;
+    int b_y = branch_b->_y;
+    int b_z = branch_b->_z;
+    int z = 0;
+
+    double w_factor = 0.5;
+    double h_factor = 0.5;
+    int width = abs(a_x - b_x) + 1;
+    int height = abs(a_y - b_y) + 1;
+
+    int left = min(a_x,b_x);
+    int right = max(a_x,b_x);
+    int bottom = min(a_y,b_y);
+    int top = max(a_y,b_y);
+    
+    int expand_w = ceil(width * w_factor);
+    int expand_h = ceil(height * h_factor);
+    left = max(left - expand_w, left_bound );
+    bottom = max(bottom - expand_h, bot_bound);
+    right = min(right + expand_w, right_bound);
+    top = min(top + expand_h, top_bound);
+
+    width = right - left + 1;
+    height = top - bottom + 1;
+    
+    Bend* sink = Three_Bend_routing(left, bottom, width, height, a_x, b_x, a_y, b_y, z);
+    // Bend* Z_bend;
+    // Z_bend = Z_routing(a_x,b_x,a_y,b_y,z);
+
+    a->set_source ( sink );
+    // sink->set_next(Z_bend);
+    // Z_bend->set_prev(sink);
+
+    Add_demand(sink,1);
+
+    
+}
+
 Bend* Router::Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z){
 
     double z_cost_h ,z_cost_v ;
@@ -363,6 +494,12 @@ Bend* Router::Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z){
     Bend* Z_bend_v;
     Bend* sink = new Bend(x1,y1,z); 
     // Z_net->set_source ( new bend(x1,y1,z) );
+    if(x1 == x2 || y1 == y2){
+        Bend* last_bend = new Bend(x2,y2,z,sink);
+        sink -> set_next( last_bend );
+        return sink;
+    }
+    
     z_cost_h = Z_route_2D_H(x1,x2,y1,y2,z, Z_bend_h);
     z_cost_v = Z_route_2D_V(x1,x2,y1,y2,z, Z_bend_v);
     bool z_v = true;
@@ -374,36 +511,54 @@ Bend* Router::Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z){
             z_v = false;
         }
     }
+    cout<<"sink " ;
+    sink->print();
     cout<<"h Z " << z_cost_h<<endl;
     Z_bend_h->print();
     cout<<"v Z " << z_cost_v<<endl;
     Z_bend_v->print();
     
     if( z_v == true ) { // choose two vertical route one horizontal route
-        sink->set_next(Z_bend_v);
-        Z_bend_v->set_prev(sink);
-        Bend* temp = Z_bend_h->get_next();
-        delete temp;
-        delete Z_bend_h;
+        if( (*sink) == (*Z_bend_v)){
+            delete sink;
+            sink = Z_bend_v;
+        }
+        else{
+            sink->set_next(Z_bend_v);
+            Z_bend_v->set_prev(sink);
+        }
+        delete_chain(Z_bend_h);
+        // Bend* temp = Z_bend_h->get_next();
+        // delete temp;
+        // delete Z_bend_h;
         
-        return Z_bend_v;
+        // return Z_bend_v;
     }
     else{
-        sink->set_next(Z_bend_h);
-        Z_bend_h->set_prev(sink);
-        Bend* temp = Z_bend_v->get_next();
-        delete temp;
-        delete Z_bend_v;
+        if( (*sink) == (*Z_bend_h)){
+            delete sink;
+            sink = Z_bend_h;
+        }
+        else{
+            sink->set_next(Z_bend_h);
+            Z_bend_h->set_prev(sink);
+        }
+        delete_chain(Z_bend_v);
+        // Bend* temp = Z_bend_v->get_next();
+        // delete temp;
+        // delete Z_bend_v;
 
-        return Z_bend_h;
-    } 
+        // return Z_bend_h;
+    }
+    return sink; 
     
 }
 
 double Router::Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend){
     double best_cost = 1e10;
     Bend* Z_bend_n;
-    
+    Bend* pre_last_bend;
+    Bend* last_bend = new Bend(x2,y2,z);
     //asssume x1 < x2
     bool inv = false;
     if( x1 > x2 ){
@@ -413,8 +568,8 @@ double Router::Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t 
     }
 
     double best_x = 0 ;
-
-    for (size_t x = x1+1 ; x <= x2; x++){
+    
+    for (size_t x = x1 ; x <= x2; x++){
         double cost = H_route(x1,x,y1,z) + V_route(x,y1,y2,z) + H_route(x,x2,y2,z);
         if( cost < best_cost ){
             // delete Z_bend;
@@ -424,20 +579,39 @@ double Router::Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t 
         }
     }
     if( inv == false){
-        Z_bend = new Bend(best_x,y1,z);
-        Z_bend_n = new Bend(best_x,y2,z);
-        Z_bend->set_next( Z_bend_n );
-        Z_bend_n->set_prev(Z_bend); 
+        if( best_x != x1){
+            Z_bend = new Bend(best_x,y1,z);
+            Z_bend_n = new Bend(best_x,y2,z, Z_bend);
+            Z_bend->set_next( Z_bend_n );
+            pre_last_bend = Z_bend_n;
+            // Z_bend_n->set_prev(Z_bend); 
+        }
+        else{   
+            //L routing only one bend exist
+            Z_bend = new Bend(best_x,y2,z);
+            pre_last_bend = Z_bend;
+        }
     }
     else{
         if( best_x != x2){
             Z_bend = new Bend(best_x,y2,z);
-            Z_bend_n = new Bend(best_x,y1,z);
+            Z_bend_n = new Bend(best_x,y1,z,Z_bend);
             Z_bend->set_next( Z_bend_n );
-            Z_bend_n->set_prev(Z_bend);
+            // Z_bend_n->set_prev(Z_bend);
+            pre_last_bend = Z_bend_n;
         }
-        else    // L routing only one bend exist
+        else{
+        // L routing only one bend exist
             Z_bend = new Bend(best_x,y1,z);
+            pre_last_bend = Z_bend;
+        }   
+    }
+    if( ( (*pre_last_bend) != (*last_bend) ) ){
+        pre_last_bend -> set_next( last_bend );
+        last_bend -> set_prev(pre_last_bend); 
+    }
+    else{
+        delete last_bend;
     }
     return best_cost;
 }
@@ -445,6 +619,8 @@ double Router::Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t 
 double Router::Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend){
     double best_cost = 1e10;
     Bend* Z_bend_n;
+    Bend* last_bend = new Bend(x2,y2,z);
+    Bend* pre_last_bend;
     //asssume y1 < y2
     bool inv = false;
     if(y1 > y2){
@@ -454,7 +630,7 @@ double Router::Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t 
     }
 
     double best_y = 0;
-    for (size_t y = y1+1 ; y <= y2; y++){
+    for (size_t y = y1 ; y <= y2; y++){
         double cost = V_route(x1,y1,y,z) + H_route(x1,x2,y,z) + V_route(x2,y,y2,z);
         if( cost < best_cost ){
             // delete Z_bend;
@@ -465,27 +641,53 @@ double Router::Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t 
     }
 
     if( inv == false){
-        Z_bend = new Bend(x1,best_y,z);
-        Z_bend_n = new Bend(x2,best_y,z);
-        Z_bend->set_next( Z_bend_n );
-        Z_bend_n->set_prev(Z_bend); 
+        if(best_y != y1){
+            Z_bend = new Bend(x1,best_y,z);
+            Z_bend_n = new Bend(x2,best_y,z, Z_bend);
+            Z_bend->set_next( Z_bend_n );
+            pre_last_bend = Z_bend_n;
+            // Z_bend_n->set_prev(Z_bend); 
+            // Z_bend_n->set_next(last_bend);
+            // last_bend->set_prev(Z_bend_n);
+        }
+        else
+        {   //L routing only one bend exist
+            Z_bend = new Bend(x2,best_y,z);
+            pre_last_bend = Z_bend;
+            // Z_bend ->set_next(last_bend);
+            // last_bend->set_prev(Z_bend);
+        }
+        
     }
     else{
         if(best_y != y2 ){
             Z_bend = new Bend(x2,best_y,z);
-            Z_bend_n = new Bend(x1,best_y,z);
+            Z_bend_n = new Bend(x1,best_y,z,Z_bend);
             Z_bend->set_next( Z_bend_n );
-            Z_bend_n->set_prev(Z_bend);
+            pre_last_bend = Z_bend_n;
+            // Z_bend_n->set_next(last_bend);
+            // last_bend->set_prev(Z_bend_n);
         }
         else {  //L routing only one bend exist
             Z_bend = new Bend(x1,best_y,z);
+            pre_last_bend = Z_bend;
+            // Z_bend ->set_next(last_bend);
+            // last_bend->set_prev(Z_bend);
         }
     }
-    return best_cost;
+    if( ( (*pre_last_bend) != (*last_bend) ) ){
+        pre_last_bend -> set_next( last_bend );
+        last_bend -> set_prev(pre_last_bend); 
+    }
+    else{
+        delete last_bend;
+    }  
+      return best_cost;
      
 }
 
 Bend* Router::L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z){
+
     double L1_cost = 0;
     double L2_cost = 0;
     // int z = 0 ; 
@@ -514,8 +716,132 @@ Bend* Router::L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z){
  
 }
 
+Bend* Router::Three_Bend_routing(size_t left, size_t bottom, size_t width, size_t height, size_t x1, size_t x2, size_t y1, size_t y2, size_t z){
+    cerr<< left << " " << bottom <<" "<< width <<" "<< height <<endl;
+    vector<vector<double>> d_h(width, vector<double>(height))  , d_v(width, vector<double>(height));
+    vector<Bend*> B_list;
+    Bend* sink = new Bend(x1,y1,z);
+    B_list.push_back( sink );
+    double C2_best = INFINITY;
+    double C3_best = INFINITY;
+    bool C2_HV;
+    bool C3_HV;
+    pair<int,int> C2_index, C3_index;
+    for(size_t y = 0; y < height; y++){
+        d_h[0][y] = 0;
+        for(size_t x = 1 ; x < width; x++){
+            d_h[x][y] = d_h[x-1][y] + (*cost_row_map)(x-1 + left, y + bottom, z);
+        }
+    }
+    for(size_t x = 0; x < width; x++){
+        d_v[x][0] = 0;
+        for(size_t y = 1; y < height; y++){
+            d_v[x][y] = d_v[x][y-1] + (*cost_col_map)(x + left, y-1 + bottom, z); 
+        }
+    }
+    int n_x1 = x1 - left;
+    int n_x2 = x2 - left;
+    int n_y1 = y1 - bottom;
+    int n_y2 = y2 - bottom; 
+    for(size_t y = 0; y < height; y++){
+        for(size_t x = 0; x < width; x++){
+            double L[4];
+            L[0] = abs( d_h[n_x1][n_y1] - d_h[x][n_y1] ) + abs( d_v[x][n_y1] - d_v[x][y] );
+            L[1] = abs( d_v[n_x1][n_y1] - d_v[n_x1][y] ) + abs( d_h[n_x1][y] - d_h[x][y] );
+            L[2] = abs( d_h[n_x2][n_y2] - d_h[x][n_y2] ) + abs( d_v[x][n_y2] - d_v[x][y] );
+            L[3] = abs( d_v[n_x2][n_y2] - d_v[n_x2][y] ) + abs( d_h[n_x2][y] - d_h[x][y] );
+            double Route[4];
+            Route[0] = L[0] + L[2];     // dir: H - V - H
+            Route[1] = L[0] + L[3];     // need add via cost dir : H - V - H - V
+            Route[2] = L[1] + L[2];     // need add via cost dir : V - H - V - H
+            Route[3] = L[1] + L[3];     // dir: V - H - V
+            double cost_two_via = Route[0];
+            bool H_V_two_via = true;
+            double cost_three_via = Route[1];
+            bool H_V_three_via = true;
+            if( cost_two_via > Route[3] ){
+                cost_two_via = Route[3];
+                H_V_two_via = false;
+            }
+            else if( cost_two_via == Route[3]){
+                if(rand()%2 == 1){
+                    cost_two_via = Route[3];
+                    H_V_two_via = false;    
+                }
+            }
+
+            if( cost_three_via > Route[2] ){
+                cost_three_via = Route[3];
+                H_V_three_via = false;
+            }
+            else if( cost_three_via == Route[2]){
+                if(rand()%2){
+                    cost_three_via = Route[3];
+                    H_V_three_via = false;
+                }
+            }
+            // compare with Cost
+            if( cost_two_via < C2_best ){
+                C2_best = cost_two_via;
+                C2_HV = H_V_two_via;
+                C2_index.first = x;
+                C2_index.second = y;
+            }
+            if( cost_three_via < C3_best ){
+                C3_best = cost_three_via;
+                C3_HV = H_V_three_via;
+                C3_index.first = x;
+                C3_index.second = y;
+            }
+        }
+    }
+    Bend* L1, *L2, *L3;
+    if( C2_best <= C3_best ){
+        int L_x = C2_index.first + left;
+        int L_y = C2_index.second + bottom;
+        if( C2_HV == true ){
+            L1 = new Bend(L_x, y1, z);
+            L2 = new Bend(L_x, y2, z);
+            // Bend* L2 = new Bend(L1_x, L1_y, z);
+        }
+        else{
+            L1 = new Bend(x1, L_y, z);
+            L2 = new Bend(x2, L_y, z);
+        }
+        B_list.push_back(L1);
+        B_list.push_back(L2);
+    }
+    else{
+        int L_x = C3_index.first + left;
+        int L_y = C3_index.second + bottom;
+        
+        if( C3_HV == true ){
+            L1 = new Bend(L_x, y1, z);
+            L2 = new Bend(L_x, L_y, z);
+            L3 = new Bend(x2, L_y, z);
+        }
+        else{
+            L1 = new Bend(x1, L_y, z);
+            L2 = new Bend(L_x, L_y, z);
+            L3 = new Bend(L_x, y2, z);
+        }
+        B_list.push_back(L1);
+        B_list.push_back(L2);
+        B_list.push_back(L3);
+    }
+    Bend* target = new Bend(x2,y2,z);
+    B_list.push_back(target);
+
+    Build_Bend_link_list( B_list );
+    return sink;
+}
+
+Bend* Router::V_routing(size_t x1, size_t x2, size_t y1, size_t y2, size_t z){
+
+}
+
 double Router::V_route(size_t x , size_t y1, size_t y2 , size_t z ){
-//y1 to y2 
+//y1 to y2  
 
     return V_route_edge( x ,  y1,  y2 ,  z );
     return V_route_grid( x ,  y1,  y2 ,  z );
@@ -893,6 +1219,8 @@ int Router::find_expand_y_position(double y){
 void Router::Add_demand(Bend* start, double f){        //2D
     Bend* trav = start;                 //traverse
     Bend* n_trav = trav->get_next();    //next traverse
+    cout<<"ADD demand"<<endl;
+    trav->print();
     while(n_trav != NULL){
         if(trav->_x == n_trav->_x){         //Vertical
             Add_demand_V(trav->_x, trav->_y, n_trav->_y, 0, f);
@@ -902,6 +1230,7 @@ void Router::Add_demand(Bend* start, double f){        //2D
         }
         trav = n_trav;
         n_trav = trav->get_next();
+        trav->print();
     }
 }
 
@@ -910,6 +1239,7 @@ void Router::Add_demand_3D(Bend* s, double f = 1){
     Bend* n_trav = trav->get_next();    //next traverse
     cout<<"ADD DEMAND 3D"<<endl;
     trav->print();
+    (*demand_grid_map)(trav->_x,trav->_y,trav->_z) -= f; // head and end don't add demand here
     while(n_trav != NULL){
         n_trav->print();
         if(trav->_x != n_trav->_x){         //Horizontal
@@ -924,14 +1254,13 @@ void Router::Add_demand_3D(Bend* s, double f = 1){
         trav = n_trav;
         n_trav = trav->get_next();
     }
-    (*demand_grid_map)(trav->_x,trav->_y,trav->_z) += f;
 }
 
 void Router::Add_demand_H( int x1, int x2, int y, int z, double f){
     if(x1 > x2) 
         swap(x1,x2); //make x1 < x2
     for(int x = x1; x < x2; x++){
-        (*demand_grid_map)(x,y,z) += f;
+        (*demand_row_map)(x,y,z) += f;
     }
 }
 
@@ -984,8 +1313,28 @@ void Router::Add_demand_3D_Z(int x, int y, int z1, int z2, double f ){
         }
 }
 
-void Router::Exclude_demand(Bend* start, double f){        //2D and we need remove the bend
+void Router::Add_demand_3D_Z_both_end(int x, int y, int z1, int z2, double f ){
+
+    // if(z1 > z2) 
+    //     swap(z1,z2); //make z1 < z2
+    // cout<<"both end 3d z add demand, from: "<<z1<<" to: "<<z2<<endl;
+    // demand_grid_map->print_congestion();
+    if(z1 <= z2)
+        for(int z = z1; z <= z2; z++){
+            (*demand_grid_map)(x,y,z) += f;
+        }
+    else if(z1 > z2)
+        for(int z = z1 ; z <= z2; z--){
+            (*demand_grid_map)(x,y,z) += f;
+        }
+    // demand_grid_map->print_congestion();
+
+}
+
+void Router::Exclude_demand(Bend* start, double f){        //2D and need remove the bend
     Bend* trav = start;                 //traverse
+    if(start == NULL)
+        return;
     Bend* n_trav = trav->get_next();    //next traverse
     while(n_trav != NULL){
         if(trav->_x == n_trav->_x){   //Vertical
@@ -1086,7 +1435,6 @@ void Router::layer_assignment(){
     for(int i = 0; i < sorted_idx_of_net.size(); i++){
         cout<<"layer assignment : "<<sorted_idx_of_net[i]<<endl;
         layer_assignment_one_net(sorted_idx_of_net[i]);
-        
     }
     // for(int i = 0 ; i < two_pin_netlist.size(); i++){
     //     cout<<"layer assignment : "<<i<<endl;
@@ -1097,10 +1445,13 @@ void Router::layer_assignment(){
 
 void Router::layer_assignment_one_net(int net_idx){
     
+    // cout<<"show demand map"<<endl;
+    // demand_grid_map->print_congestion();
     int width = _placement->_boundary_width;
     int height = _placement->_boundary_height;
 
     pair<int,int> initial_pair = make_pair(-1,-1);
+    layer_range.clear();
     layer_range = Two_Dimension_map<pair<int,int>>(width,height,initial_pair);
     layer_assignment_of_pin(net_idx);
     vector<vector<Segment>> total_segment;    
@@ -1122,6 +1473,7 @@ void Router::layer_assignment_one_net(int net_idx){
         cout<<"max dist to pin: "<<max_dist_to_pin<<endl;
         cout<<endl<<"idx " <<i<<" segment len: "<<seg_len<<endl;
         cout<<"dist to pin: s: "<<s_to_pin<<" t: "<<t_to_pin<<endl;
+        two_pin_netlist[net_idx][i].print_bend();
         if( total_segment.capacity() < max_dist_to_pin ) total_segment.resize(max_dist_to_pin);
         Bend* travel = two_pin_netlist[net_idx][i].source;
        
@@ -1154,11 +1506,10 @@ void Router::layer_assignment_one_net(int net_idx){
                 next_bend = travel->get_next();
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
-                assert(travel != NULL);
-                // cout<<"n is "<<n<<" d is "<<d<<endl;
+                // assert(travel != NULL);
             }
-            if(t -> _z != -1)
-                next_bend -> _z = t -> _z;
+            // if(t -> _z != -1)
+            //     next_bend -> _z = t -> _z;
         }
         else if( s_to_pin > t_to_pin){
             cout<<"================="<<endl;
@@ -1448,6 +1799,17 @@ void Router::layer_assignment_straight_line(Bend* source, Bend* target, int min_
     bool limit_range = (t_z == -1 ? 0 : 1);
     cout<<"s "<<s_x<<" "<<s_y<<" "<<s_layer<<endl;
     cout<<"t "<<t_x<<" "<<t_y<<" "<<t_z<<endl;
+    pair<int,int> check_LR = layer_range(s_x,s_y);
+
+    if(check_LR.first == -1 ){
+        swap(source,target);
+        s_x = source->_x;
+        s_y = source->_y;
+        s_layer = source->_z;
+        t_x = target->_x;
+        t_y = target->_y;
+        t_z = target->_z;
+    }
     pair<int,int>& s_layer_range = layer_range(s_x,s_y);
     pair<int,int>& t_layer_range = layer_range(t_x,t_y);
     int width = _placement->_boundary_width;
@@ -1955,12 +2317,15 @@ void Router::layer_assignment_layer_range(int net_idx){
         assert(upper_z != -1);
         cout<<"x: "<<range_x<<" y: "<<range_y<<endl;
         cout<<"l_z: "<<lower_z<<" u_z: "<<upper_z<<endl;
-        if(lower_z == upper_z) 
+        if(lower_z == upper_z) {
+            Add_demand_3D_Z_both_end(range_x, range_y, lower_z, upper_z, 1);
             continue;
+        }
         Bend* lower_bend = new Bend(range_x, range_y, lower_z);
         Bend* upper_bend = new Bend(range_x, range_y, upper_z, lower_bend);
         lower_bend->set_next(upper_bend);
-        Add_demand_3D( lower_bend );
+        // Add_demand_3D( lower_bend );
+        Add_demand_3D_Z_both_end(range_x, range_y, lower_z, upper_z, 1);
         Segment new_segment( lower_bend, upper_bend);
         segment_of_netlist[ net_idx ].push_back( new_segment ); 
     }
@@ -2266,4 +2631,11 @@ void Router::writeResult(int net_idx,fstream &outFile ){
     //     outFile<<b_y<<" "<<b_x<<" "<<b_z<<" ";
     //     outFile<<_placement -> _netArray[net_idx] ->getName() <<endl; 
     // }
+}
+
+void delete_chain(Bend* a){
+    Bend* b = a ->get_next();
+    if( b != NULL)
+        delete_chain(b);
+    delete a; 
 }

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <limits.h>
 #include <numeric>      // std:;iota
+#include <assert.h>
 // #include "router.h"
 
 using namespace std;
@@ -109,6 +110,7 @@ public:
     Bend* prev_bend;
     Bend* next_bend;
     bool operator==(const Bend a){ return( a._x == _x && a._y == _y && a._z == _z); }
+    bool operator!=(const Bend a){ return( !( (*this) == a ) ); }
     // void operator = (Coordinate a){ _x = a.x ; _y = a.y ; _z = a.z; }
 };
  
@@ -146,6 +148,7 @@ public:
             ++segment_len;
         }
     }
+    
     int length(){
         Bend* temp = source ; 
         Bend* n_bend = source->get_next();
@@ -169,11 +172,13 @@ public:
         return l;
     }
     void print_bend() { 
+        cout<<"print Bend..."<<endl;
         Bend* temp = source ; 
         while(temp != NULL){
             temp->print();
             temp = temp->get_next();
         }
+        cout<<"end"<<endl;
     }
 private:
     branch* b_source;
@@ -182,6 +187,12 @@ private:
     int segment_len;
 
 };
+
+typedef struct {
+    int x;
+    int y;
+    int z;
+}Coord_3D;
 
 class Grid
 {
@@ -236,7 +247,7 @@ public:
 
 class Segment{
 public: 
-    Segment( Bend* s, Bend* t) :source(s),target(t) { if(*(s)==*(t)) {s->print() ; t->print(); exit(-1);}}
+    Segment( Bend* s, Bend* t) :source(s),target(t) { assert((*(s)!=*(t))); if(*(s)==*(t)) {s->print() ; t->print(); exit(-1);}}
     Bend* source;
     Bend* target;
     int distance;
@@ -245,7 +256,7 @@ public:
 
 template <typename T>
 vector<size_t> sort_indexes(const vector<T> &v) {
-
+  // from smaller to bigger
   // initialize original index locations
   vector<size_t> idx(v.size());
   iota(idx.begin(), idx.end(), 0);

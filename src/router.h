@@ -18,6 +18,9 @@ extern "C" {
 
 using namespace std;
 
+void delete_chain(Bend*);
+void Build_Bend_link_list(const vector<Bend*> &); 
+
 class Router
 {
 public:
@@ -56,10 +59,19 @@ public:
     void two_pin_net_Z_routing(Pin* , Pin* );           // perform Z routing in 2D plane with two pin
     void two_pin_net_Both_L_routing(two_pin_net*,bool);
     void two_pin_net_L_routing(two_pin_net*);
-    Bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z );     // perform L routing in 2D plane
-    Bend* Z_routing(size_t x1, size_t x2, size_t y1 ,size_t y2 ,size_t z);        // perform Z routing in 2D plane
-    double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
-    double Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2 , size_t z , Bend*& Z_bend );  //2D plane Z routing with one Horizontal and two vertical route
+    void two_pin_net_Z_routing(two_pin_net*);
+    void two_pin_net_3_bend_routing(two_pin_net*);
+    void Total_net_Z_routing();
+    void Total_net_Three_Bend_routing();
+    Bend* V_routing(size_t x1, size_t x2, size_t y1, size_t y2, size_t z);
+    Bend* H_routing(size_t x1, size_t x2, size_t y1, size_t y2, size_t z);
+
+    Bend* L_route_2D(size_t x1, size_t x2, size_t y1, size_t y2, size_t z);     // perform L routing in 2D plane
+    Bend* Z_routing(size_t x1, size_t x2, size_t y1, size_t y2, size_t z);        // perform Z routing in 2D plane
+    Bend* Three_Bend_routing(size_t left, size_t bottom, size_t width, size_t height, size_t x1, size_t x2, size_t y1, size_t y2, size_t z);
+    
+    double Z_route_2D_H(size_t x1, size_t x2, size_t y1, size_t y2, size_t z, Bend*& Z_bend );  //2D plane Z routing with two Horizontal and one vertical route
+    double Z_route_2D_V(size_t x1, size_t x2, size_t y1, size_t y2, size_t z, Bend*& Z_bend );  //2D plane Z routing with one Horizontal and two vertical route
 
     double V_route(size_t x , size_t y1, size_t y2 , size_t z );    // straight route in Vertical ( cross Row )
     double H_route(size_t x1 , size_t x2, size_t y , size_t z );    // straight route in Horizontal ( cross Col )
@@ -90,6 +102,7 @@ public:
     void Add_demand_3D_H(int,int,int,int,double f);
     void Add_demand_3D_V(int,int,int,int,double f);
     void Add_demand_3D_Z(int,int,int,int,double f);
+    void Add_demand_3D_Z_both_end(int,int,int,int,double f);
     void Exclude_demand( Bend* , double );
     void Exclude_demand_H(int,int,int,int,double);
     void Exclude_demand_V(int,int,int,int,double);
@@ -138,6 +151,7 @@ private:
     Congestion* demand_grid_map, * demand_grid_2Dmap;       //demand of total grid
     Two_Dimension_map< pair<int,int>>   layer_range;        //the layer range of total 2D grid of one net
     vector<pair<int,int>>               LR_index;           //the modified layer range index
+    map<Coord_3D,bool>                  LA_index_map;       //record the node of branch such that the demand add once
     vector<vector<Grid*>> grid_map;     //grid map include cell information 
     vector<double> x_expand_factor;     //expansion factor of x
     vector<double> x_expand_result;     //expansion result of x
