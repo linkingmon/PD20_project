@@ -52,11 +52,14 @@ void Router::route(){
     
     construct_grid_map();
     construct_supply_demand_map();
+        check_demand();
+
     // supply_grid_map->print_congestion();
     // demand_grid_map->print_congestion();
 
     projection_to_2D();
     supply_from_grid_to_edge();
+    return;
     // return;
     x_expand_factor.resize(_placement->_boundary_width-1,1.5);
     y_expand_factor.resize(_placement->_boundary_height-1,1.5);
@@ -78,11 +81,16 @@ void Router::route(){
 
     cout<<"3_Bend routing"<<endl;
     Total_net_Three_Bend_routing();
+
+    virtual_capacity_initiailization_simple_ver();
+
     cout<<"A star serach routing"<<endl;
     cout<<endl;
-    for(int i = 0; i < 5  ; i++){
+    for(int i = 0; i < 5 ; i++){
         cout<<"the "<<i<<" times A star"<<endl;
-        A_star_search_routing();
+        // A_star_search_routing(i);
+        maze_routing(i);
+        Total_net_Three_Bend_routing();
     }
         // demand_grid_map->print_congestion();
         // return;
@@ -90,8 +98,9 @@ void Router::route(){
     cout<<endl; 
     layer_assignment(); 
     check_demand();
+    check_demand_2D();
     // layer_range.print();    
-    demand_grid_map->print_congestion();
+    // demand_grid_map->print_congestion();
 
     // supply_grid_map->print_congestion();
     // demand_grid_map->print_congestion();
@@ -124,7 +133,6 @@ void Router::construct_grid_map(){
         // ++(grid_map[x][y]->getMCell(Master_id));
         grid_map[x][y]->add_Cell(i);
     }
-
 }
 
 void Router::construct_supply_demand_map(){
@@ -371,7 +379,9 @@ void Router::two_pin_net_L_routing( two_pin_net* a ){
         sink->set_next(L_bend);
         L_bend->set_prev(sink);
     }
+
     a->set_source(sink);
+    Add_demand(sink,1);
     // a->print_bend();
     // twopin_netlist_L.push_back(L_net);
 }
@@ -473,7 +483,8 @@ void Router::two_pin_net_3_bend_routing(two_pin_net* a){
 
     width = right - left + 1;
     height = top - bottom + 1;
-    
+
+    expand_search_region(a_x,b_x,a_y,b_y,left,width,bottom,height);
     Bend* sink = Three_Bend_routing(left, bottom, width, height, a_x, b_x, a_y, b_y, z);
     // Bend* Z_bend;
     // Z_bend = Z_routing(a_x,b_x,a_y,b_y,z);
@@ -743,6 +754,9 @@ Bend* Router::Three_Bend_routing(size_t left, size_t bottom, size_t width, size_
     int n_x2 = x2 - left;
     int n_y1 = y1 - bottom;
     int n_y2 = y2 - bottom; 
+    cerr<<"cost map construct"<<endl;
+    cout<<n_x1<<" "<<n_y1<<endl;
+    cout<<n_x2<<" "<<n_y2<<endl;
     for(size_t y = 0; y < height; y++){
         for(size_t x = 0; x < width; x++){
             double L[4];
@@ -796,6 +810,8 @@ Bend* Router::Three_Bend_routing(size_t left, size_t bottom, size_t width, size_
         }
     }
     Bend* L1, *L2, *L3;
+    cerr<<"C2 best"<<C2_best<<endl;
+    cerr<<"C3 best"<<C3_best<<endl;
     if( C2_best <= C3_best ){
         int L_x = C2_index.first + left;
         int L_y = C2_index.second + bottom;
@@ -927,12 +943,106 @@ double Router::H_route_grid(size_t x1 , size_t x2, size_t y , size_t z ){
     return v_cost;
 }
 
-void Router::maze_routing(){
-
+void Router::expand_search_region(int x1, int x2,int y1 ,int y2 ,int& left ,int& width, int& bottom, int& height){
+    
+    int o_width = abs(x1-x2) + 1;
+    int o_height = abs(y1-y2) + 1;
+    double cong_r = computer_congestion( x1, x2, y1, y2);
+    double expand_f = 2;
+    int expand_x = ceil( expand_f * cong_r * o_width );
+    int expand_y = ceil( expand_f * cong_r * o_height );
+    int min_x = min(x1,x2);
+    int min_y = min(y1,y2);
+    left = max(0 , min_x - expand_x);
+    bottom = max(0, min_y - expand_y);
+    width = min(_placement->_boundary_width - left, expand_x * 2 + o_width);
+    height = min(_placement->_boundary_height - bottom, expand_y * 2 + o_height);
+    cout<<"x "<<x1<<","<<x2<<endl;
+    cout<<"y "<<y1<<","<<y2<<endl;
+    cout<<"bound width "<<left<<","<<left+width-1<<endl;
+    cout<<"bound height "<<bottom<<","<<bottom+height-1<<endl;
+    cout<<"expand "<<expand_x<<","<<expand_y<<endl;
+    cout<<"congestion"<<cong_r<<endl;
 }
 
-void Router::A_star_search_routing(){
-    update_cost_map();
+double Router::computer_congestion(int x1,int x2,int y1 ,int y2){
+    int z = 0;
+    double r = 0;
+    double total_supply = 0;
+    double total_demand = 0;
+    if(x1 > x2)
+        swap(x1,x2);
+    if(y1 > y2)
+        swap(y1,y2);
+    for(size_t x = x1; x < x2; x++){
+        for(size_t y = y1; y <= y2; y++){
+            total_supply += (*supply_row_map)(x,y,z);
+            total_demand += (*demand_row_map)(x,y,z);
+        }
+    }
+    for(size_t x = x1; x <= x2; x++){
+        for(size_t y = y1; y < y2; y++){
+            total_supply += (*supply_col_map)(x,y,z);
+            total_demand += (*demand_col_map)(x,y,z);
+        }
+    }
+    cout<<"demand"<<total_demand<<endl;
+    cout<<"supply"<<total_supply<<endl;
+    r = total_demand / total_supply;
+    return r;
+}
+
+void Router::maze_routing(int iter){
+    // update_cost_map();
+    update_cost_map_by_virtual_capacity(iter);
+    for(size_t i = 0 ; i < two_pin_netlist.size(); i++){
+        vector<two_pin_net> cur_net;
+        
+        SubTree* final_tree = NULL;
+        for(size_t j = 0; j < two_pin_netlist[i].size();j++){
+            int s_x = two_pin_netlist[i][j].b_source->_x;
+            int s_y = two_pin_netlist[i][j].b_source->_y;
+            int t_x = two_pin_netlist[i][j].b_target->_x;
+            int t_y = two_pin_netlist[i][j].b_target->_y;
+            
+            SubTree *a = two_pin_netlist[i][j].b_source -> tree;
+            SubTree *b = two_pin_netlist[i][j].b_target -> tree;
+            if(a == b) continue;
+
+            Bend* old_bend = two_pin_netlist[i][j].get_source();
+
+            cout<<"Exclude the demand"<<endl;
+            Exclude_demand(old_bend,1);
+            // if( abs(s_x-t_x) <= 0) continue;
+            // if( abs(s_y-t_y) <= 0) continue;
+            int left, bottom, width, height;
+            expand_search_region(s_x,t_x,s_y,t_y,left,width,bottom,height);
+            Maze_router test( s_x, s_y, 0, t_x, t_y, 0, 1, left, width, bottom, height, cost_row_map, cost_col_map, demand_grid_map, a, b);
+            cout<<"Dijkstra..."<<endl;
+            
+            test.SP.Dijkstra_multi();
+            cout<<"Build the path..."<<endl;
+            test.SP.Build_the_path_multi();
+            Bend* result = test.SP.source();
+            
+            // two_pin_netlist[i][j].set_source(result);
+            cout<<"ADD demand..."<<endl;
+            Add_demand(result,1);
+            final_tree = test.get_final_tree();
+        }
+        // SubTree* final_tree = two_pin_netlist[i]
+        if(final_tree == NULL )
+            continue;
+        two_pin_netlist[i].clear();
+        for(size_t k = 0; k < final_tree -> netlist.size(); k++){
+            two_pin_netlist[i].push_back(*(final_tree -> netlist[k]));
+        }
+    }
+}
+
+void Router::A_star_search_routing(int iter){
+    // update_cost_map();
+    update_cost_map_by_virtual_capacity(iter);
     for(size_t i = 0 ; i < two_pin_netlist.size(); i++){
         for(size_t j = 0; j < two_pin_netlist[i].size();j++){
             int s_x = two_pin_netlist[i][j].b_source->_x;
@@ -940,13 +1050,18 @@ void Router::A_star_search_routing(){
             int t_x = two_pin_netlist[i][j].b_target->_x;
             int t_y = two_pin_netlist[i][j].b_target->_y;
             
-            if( abs(s_x-t_x) <= 0) continue;
-            if( abs(s_y-t_y) <= 0) continue;
-            Shortest_Path test( s_x, s_y, 0, t_x, t_y, 0, 1, cost_row_map, cost_col_map, demand_grid_map );
+            // if( abs(s_x-t_x) <= 0) continue;
+            // if( abs(s_y-t_y) <= 0) continue;
+            int left, bottom, width, height;
+            expand_search_region(s_x,t_x,s_y,t_y,left,width,bottom,height);
+            Shortest_Path test( s_x, s_y, 0, t_x, t_y, 0, 1, left, width, bottom, height, cost_row_map, cost_col_map, demand_grid_map );
             cout<<"Dijkstra..."<<endl;
-            test.Dijkstra();
+            // test.Dijkstra();
+            test.Dijkstra_multi();
             cout<<"Build the path..."<<endl;
-            test.Build_the_path();
+            // test.Build_the_path();
+            test.Build_the_path_multi();
+            // exit(-1);
             Bend* result = test.source();
             Bend* old_bend = two_pin_netlist[i][j].get_source();
 
@@ -967,7 +1082,7 @@ void Router::update_cost_map(){
     int height = _placement->_boundary_height;
     // int norm_y_factor = _placement->_leftBoundary;
     // cost_row_map->print_congestion();
-    for(int x = 0 ; x < width-1  ; x++){
+    for(int x = 0 ; x < width-1; x++){
         for(int y = 0 ; y < height; y++){
 
            (*cost_row_map)(x,y,0) = 1 + h/(1+exp(-k * ((*demand_row_map)(x,y,0) - (*supply_row_map)(x,y,0)))) ;
@@ -981,10 +1096,84 @@ void Router::update_cost_map(){
     }
 }
 
+void Router::update_cost_map_by_virtual_capacity(int iter){
+    update_virtual_capacity();
+    double h_step = 0.1;
+    double k_step = 1;
+    double s_step = 0.1;
+    double h = H_factor + h_step * iter;
+    double k = K_factor + k_step * iter;
+    double s = S_factor + s_step * iter;
+    int width = _placement->_boundary_width;
+    int height = _placement->_boundary_height;
+    // int norm_y_factor = _placement->_leftBoundary;
+    // cost_row_map->print_congestion();
+    for(int x = 0 ; x < width-1  ; x++){
+        for(int y = 0 ; y < height; y++){
+            if( (*demand_row_map)(x,y,0) <= (*v_supply_row_map)(x,y,0) )
+                (*cost_row_map)(x,y,0) = 1 + h/(1+exp(-k * ((*demand_row_map)(x,y,0) - (*v_supply_row_map)(x,y,0))));
+            else
+                (*cost_row_map)(x,y,0) = 1 + h/2 + s * ( (*demand_row_map)(x,y,0) - (*v_supply_row_map)(x,y,0) );
+
+        }
+    }
+    
+    for(int x = 0 ; x < width ; x++){
+        for(int y = 0 ; y < height-1 ; y++){
+            if( (*demand_col_map)(x,y,0) <= (*v_supply_col_map)(x,y,0) )
+                (*cost_col_map)(x,y,0) = 1 + h/(1+exp(-k * ((*demand_col_map)(x,y,0) - (*v_supply_col_map)(x,y,0))));
+            else
+                (*cost_col_map)(x,y,0) = 1 + h/2 + s * ( (*demand_col_map)(x,y,0) - (*v_supply_col_map)(x,y,0) );
+        }
+    }
+}
+
+void Router::virtual_capacity_initiailization_simple_ver(){
+    
+    int width = _placement->_boundary_width;
+    int height = _placement->_boundary_height;
+    int layer = _placement->_numLayers;
+    
+    v_supply_row_map = new Congestion_Row( width,height,layer );
+    v_supply_col_map = new Congestion_Col( width,height,layer );
+    // int norm_y_factor = _placement->_leftBoundary;
+    // cost_row_map->print_congestion();
+    for(int x = 0 ; x < width-1  ; x++){
+        for(int y = 0 ; y < height; y++){
+
+           (*v_supply_row_map)(x,y,0) =  (*supply_row_map)(x,y,0) + (*supply_row_map)(x,y,0) - (*demand_row_map)(x,y,0);
+        }
+    }
+    
+    for(int x = 0 ; x < width ; x++){
+        for(int y = 0 ; y < height-1 ; y++){
+            (*v_supply_col_map)(x,y,0) = (*supply_col_map)(x,y,0) + (*supply_col_map)(x,y,0) - (*demand_col_map)(x,y,0) ;
+        }
+    }
+}
+
+void Router::update_virtual_capacity(){
+    int width = _placement->_boundary_width;
+    int height = _placement->_boundary_height;
+    // int norm_y_factor = _placement->_leftBoundary;
+    // cost_row_map->print_congestion();
+    for(int x = 0 ; x < width-1  ; x++){
+        for(int y = 0 ; y < height; y++){
+           (*v_supply_row_map)(x,y,0) = (*v_supply_row_map)(x,y,0) + (*supply_row_map)(x,y,0) - (*demand_row_map)(x,y,0);
+        }
+    }
+    
+    for(int x = 0 ; x < width ; x++){
+        for(int y = 0 ; y < height-1 ; y++){
+            (*v_supply_col_map)(x,y,0) = (*v_supply_col_map)(x,y,0) + (*supply_col_map)(x,y,0) - (*demand_col_map)(x,y,0) ;
+        }
+    }
+}
+
 Tree Router::Flute_function(vector<double> a, vector<double> b){
     Tree flutetree;
     int flutewl;
-    int d=a.size();
+    int d = a.size();
     double* x = &a[0];
     double* y = &b[0];
 
@@ -1219,6 +1408,8 @@ int Router::find_expand_y_position(double y){
 void Router::Add_demand(Bend* start, double f){        //2D
     Bend* trav = start;                 //traverse
     Bend* n_trav = trav->get_next();    //next traverse
+    // demand_row_map->print_congestion();
+    // demand_col_map->print_congestion();
     cout<<"ADD demand"<<endl;
     trav->print();
     while(n_trav != NULL){
@@ -1232,6 +1423,9 @@ void Router::Add_demand(Bend* start, double f){        //2D
         n_trav = trav->get_next();
         trav->print();
     }
+    // demand_row_map->print_congestion();
+    // demand_col_map->print_congestion();
+  
 }
 
 void Router::Add_demand_3D(Bend* s, double f = 1){
@@ -1336,6 +1530,10 @@ void Router::Exclude_demand(Bend* start, double f){        //2D and need remove 
     if(start == NULL)
         return;
     Bend* n_trav = trav->get_next();    //next traverse
+    // demand_row_map->print_congestion();
+    // demand_col_map->print_congestion();
+    cout<<"Exclude demand"<<endl;
+    trav->print();
     while(n_trav != NULL){
         if(trav->_x == n_trav->_x){   //Vertical
             Exclude_demand_V(trav->_x, trav->_y, n_trav->_y, 0, f);
@@ -1346,7 +1544,10 @@ void Router::Exclude_demand(Bend* start, double f){        //2D and need remove 
         delete trav;
         trav = n_trav;
         n_trav = trav->get_next();
+        trav->print();
     }
+    // demand_row_map->print_congestion();
+    // demand_col_map->print_congestion();
 }
 
 void Router::Exclude_demand_H( int x1, int x2, int y, int z, double f){
@@ -1354,6 +1555,7 @@ void Router::Exclude_demand_H( int x1, int x2, int y, int z, double f){
         swap(x1,x2); //make x1 < x2
     for(int x = x1; x < x2; x++){
         (*demand_row_map)(x,y,z) -= f;
+        assert( (*demand_row_map)(x,y,z) >= 0);
     }
 }
 
@@ -1362,6 +1564,7 @@ void Router::Exclude_demand_V( int x, int y1, int y2, int z, double f){
         swap(y1,y2); //make y1 < y2
     for(int y = y1; y < y2; y++){
         (*demand_col_map)(x,y,z) -= f;
+        assert( (*demand_col_map)(x,y,z) >= 0);
     }
 }
 
@@ -1371,6 +1574,7 @@ void Router::construct_congestion_map(){
     // return;
     // add demand
     for(int i = 0; i < two_pin_netlist.size() ; i++){
+        cout<<"first time L routing Net: "<<i<<endl;
         for(int j = 0 ; j < two_pin_netlist[i].size() ; j++){
             two_pin_net_Both_L_routing( &two_pin_netlist[i][j] , first_round);
         }
@@ -1378,6 +1582,8 @@ void Router::construct_congestion_map(){
     // cout<<"demand added"<<endl;
     first_round = false;
     for(int i = 0; i < two_pin_netlist.size() ; i++){
+        
+        cout<<"second time L routing Net: "<<i<<endl;
         for(int j = 0 ; j < two_pin_netlist[i].size() ; j++){
             two_pin_net_Both_L_routing( &two_pin_netlist[i][j] , first_round);
             two_pin_net_L_routing( &two_pin_netlist[i][j] );
@@ -1397,7 +1603,7 @@ void Router::projection_to_2D(){
                 supply += (*supply_grid_map)(x,y,z);
                 demand += (*demand_grid_map)(x,y,z);
             }
-            (*supply_grid_2Dmap)(x,y,0) = supply-demand;
+            (*supply_grid_2Dmap)(x,y,0) = 0.5*2*(supply-demand)/layer;
             // (*demand_grid_2Dmap)(x,y,0) = demand;
         }
     }
@@ -1416,6 +1622,7 @@ void Router::supply_from_grid_to_edge(){
             (*supply_row_map)(x,y,0) = min(supply_1,supply_2);
         }
     }
+    supply_row_map -> print_congestion();
     // col map
     for(int x = 0 ; x < width; x++){
         for(int y = 0 ; y < height-1; y++){
@@ -1424,6 +1631,8 @@ void Router::supply_from_grid_to_edge(){
             (*supply_col_map)(x,y,0) = min(supply_1,supply_2);
         }
     }
+    supply_col_map -> print_congestion();
+
 }
 
 void Router::layer_assignment(){
@@ -1454,11 +1663,16 @@ void Router::layer_assignment_one_net(int net_idx){
     layer_range.clear();
     layer_range = Two_Dimension_map<pair<int,int>>(width,height,initial_pair);
     layer_assignment_of_pin(net_idx);
-    vector<vector<Segment>> total_segment;    
+    vector<vector<Segment>> total_segment; 
+    int max_side_length = max(width,height);
+    vector<Segment> segment_container;
+    segment_container.reserve(two_pin_netlist[net_idx].size());
+    total_segment.resize(max_side_length, segment_container );
     int pin_num = _placement -> _netArray[net_idx] -> getPin_num();
     int total_number_segment = 0;
     for(int i = 0 ; i < two_pin_netlist[net_idx].size() ; i++){
         // two_pin_netlist[net_idx][i].print_bend();
+        cout<<"two pin net"<<endl;
         branch* s = two_pin_netlist[net_idx][i].b_source;
         branch* t = two_pin_netlist[net_idx][i].b_target;
         bool s_is_pin = ( s->_id < pin_num ) ? true : false;
@@ -1474,35 +1688,47 @@ void Router::layer_assignment_one_net(int net_idx){
         cout<<endl<<"idx " <<i<<" segment len: "<<seg_len<<endl;
         cout<<"dist to pin: s: "<<s_to_pin<<" t: "<<t_to_pin<<endl;
         two_pin_netlist[net_idx][i].print_bend();
+        // cerr<<"bend";
         if( total_segment.capacity() < max_dist_to_pin ) total_segment.resize(max_dist_to_pin);
+        // cerr<<"resize";
         Bend* travel = two_pin_netlist[net_idx][i].source;
-       
+        assert(travel != NULL);
         if(s->_z != -1)    
             travel->_z = s->_z;
-     
+        cout<<s_to_pin<<" "<<t_to_pin<<endl;
         int n = 0;
         if( s_to_pin <= t_to_pin){
             int d = s_to_pin ;
             int increase_len = min ( seg_len , (seg_len - d_of_two_branch)/2 + d_of_two_branch ); 
-            
+            cout<<"increase_len"<<increase_len<<endl;
             for ( ; n < increase_len ; n++, d++){
+                cout<<"increasing... n is "<<n<<" d is "<<d<<endl;
                 Bend* next_bend = travel->get_next();
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
-                // cout<<"n is "<<n<<" d is "<<d<<endl;
                 assert(travel != NULL);
             }
             if ( n < seg_len && ( seg_len - d_of_two_branch) % 2 == 1 ){
                 Bend* next_bend = travel->get_next();
+                cout<<"n is "<<n<<" d is "<<d<<endl;
+                cout<<total_segment.size()<<endl;
+                assert(next_bend != NULL);
+                travel -> print();
+                next_bend ->print();
+                Segment(travel, next_bend);
+                cout<<"end"<<endl;
+                cout<<total_segment[d].size()<<endl;
                 total_segment[d].push_back( Segment(travel, next_bend) );
+                cout<<"Add horizontal"<<d<<endl;
+                
                 travel = next_bend;
-                // cout<<"n is "<<n<<" d is "<<d<<endl;
                 n++;
                 d--;
                 assert(travel != NULL);
             }
             Bend* next_bend;
             for ( ; n < seg_len ; n++ ,d--){
+                cout<<"decreasing... n is "<<n<<" d is "<<d<<endl;
                 next_bend = travel->get_next();
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
@@ -1514,25 +1740,25 @@ void Router::layer_assignment_one_net(int net_idx){
         else if( s_to_pin > t_to_pin){
             cout<<"================="<<endl;
             cout<<"back from target"<<endl;
-            int d = t_to_pin ;
+            int d = s_to_pin ;
             int decrease_len = min ( seg_len , (seg_len - d_of_two_branch)/2 + d_of_two_branch ); 
             // if( decrease_len > seg_len){
                 
             // }
             int increase_len = seg_len - decrease_len;
-            // cout<<"increase length: "<<increase_len<<endl;
+            cout<<"increase length: "<<increase_len<<endl;
             for ( ; n < increase_len ; n++, d++){
                 Bend* next_bend = travel->get_next();
+                cout<<"increasing... n is "<<n<<" d is "<<d<<endl;
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
-                // cout<<"n is "<<n<<" d is "<<d<<endl;
                 assert(travel != NULL);
             }
             if ( n < seg_len && ( seg_len - d_of_two_branch) % 2 == 1 ){
                 Bend* next_bend = travel->get_next();
+                cout<<"n is "<<n<<" d is "<<d<<endl;
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
-                // cout<<"n is "<<n<<" d is "<<d<<endl;
                 n++;
                 d--;
                 assert(travel != NULL);
@@ -1540,9 +1766,9 @@ void Router::layer_assignment_one_net(int net_idx){
             Bend* next_bend ;
             for ( ; n < seg_len ; n++, d--){
                 next_bend = travel->get_next();
+                cout<<"decreasing... n is "<<n<<" d is "<<d<<endl;
                 total_segment[d].push_back( Segment(travel, next_bend) );
                 travel = next_bend;
-                // cout<<"decreasing... n is "<<n<<" d is "<<d<<endl;
                 assert(travel != NULL);
             }
             // if(t -> _z != -1)
@@ -1636,7 +1862,8 @@ void Router::update_distance_of_branch_in_one_net(int idx){
     }
     // cout << "NON traval "<< non_traval.size()<<endl;
     if( non_traval.size() != 0){
-        cerr<<"exit"<<endl;
+        cerr<<"update branch exit"<<endl;
+        exit(-1);
     }
 }
 
@@ -2387,8 +2614,6 @@ int Router::layer_assignment_straight_line_H(Bend* source, Bend* target, int min
     
 }
 
-
-
 int Router::layer_assignment_straight_line_old_method(Bend* a, Bend*b , int m1){
     int layer = _placement->_numLayers;
     // cout<<"====================="<<endl;
@@ -2476,9 +2701,10 @@ bool Router::check_demand(){
     int height = _placement->_boundary_height;
     int layer = _placement->_numLayers;
     int s = 0;
-    for( size_t x = 0 ; x < width; x++){
-        for(size_t y = 0; y < height; y++){
-            for(size_t z = 0; z < layer; z++){
+    int ts = 0;
+    for(size_t z = 0; z < layer; z++){
+        for( size_t x = 0 ; x < width; x++){
+            for(size_t y = 0; y < height; y++){
                 if( (*supply_grid_map)(x,y,z) < (*demand_grid_map)(x,y,z) ){
                     // cout<<"boom"<<endl;
                     s++;
@@ -2486,8 +2712,42 @@ bool Router::check_demand(){
                 }
             }
         }
+        cout<<"layer: "<< z << " boom number: "<<s<<endl;
+        ts += s;
+        s = 0;
     }
-    cout<<"boom number"<<s<<endl;
+    cout<<"total boom grid: "<<ts<<endl;
+    return true;
+}
+
+int Router::check_demand_2D(){
+    int width =  _placement->_boundary_width;
+    int height = _placement->_boundary_height;
+    int layer = _placement->_numLayers;
+    int boom_r = 0;
+    int boom_vr = 0;
+    int boom_c = 0;
+    int boom_vc = 0;
+    for(int x = 0 ; x < width-1  ; x++){
+        for(int y = 0 ; y < height; y++){
+            if( (*demand_row_map)(x,y,0) > (*supply_row_map)(x,y,0) )
+                boom_r += 1;
+            if( (*demand_row_map)(x,y,0) > (*v_supply_row_map)(x,y,0) )
+                boom_vr += 1;
+            
+        }
+    }
+    
+    for(int x = 0 ; x < width ; x++){
+        for(int y = 0 ; y < height-1 ; y++){
+            if( (*demand_col_map)(x,y,0) > (*supply_col_map)(x,y,0) )
+                boom_c += 1;
+            if( (*demand_col_map)(x,y,0) > (*v_supply_col_map)(x,y,0) )
+            boom_vc += 1;
+        }
+    }
+    cout<<"boom number"<<boom_r<<" "<<boom_c<<endl;
+    cout<<"boom virtual number"<<boom_vr<<" "<<boom_vc<<endl;
     return true;
 }
 

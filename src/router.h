@@ -41,14 +41,17 @@ public:
         layer = 1;
         supply_row_map = new Congestion_Row( width,height,layer );
         demand_row_map = new Congestion_Row( width,height,layer );
-        cost_row_map =   new Congestion_Row( width,height,layer );
+        cost_row_map =   new Congestion_Row( width,height,layer,1 );
         supply_col_map = new Congestion_Col( width,height,layer );
         demand_col_map = new Congestion_Col( width,height,layer );
-        cost_col_map =   new Congestion_Col( width,height,layer );
+        cost_col_map =   new Congestion_Col( width,height,layer,1 );
 
         supply_grid_2Dmap = new Congestion( width,height,layer );
         demand_grid_2Dmap = new Congestion( width,height,layer );
 
+        H_factor = 0.1;
+        K_factor = 1;
+        S_factor = 10;
        
     }
     ~Router()
@@ -84,8 +87,21 @@ public:
 
     void construct_supply_demand_map();
     void construct_grid_map();
-    void maze_routing();
-    void A_star_search_routing();
+    void projection_to_2D();
+    void supply_from_grid_to_edge();
+    
+    // virtual capacity
+    void virtual_capacity_initiailization();
+    void virtual_capacity_initiailization_simple_ver();
+    void update_virtual_capacity();
+    void update_cost_map_by_virtual_capacity(int);
+
+    void maze_routing(int);
+    void A_star_search_routing(int);
+    void update_cost_map();
+    void expand_search_region(int,int,int,int,int&,int&,int&,int&);
+    double computer_congestion(int,int,int,int);
+    
     Tree Flute_function(vector<double> , vector<double> );
     void expansion();
     void update_x_expansion(int , double);
@@ -95,6 +111,7 @@ public:
     void construct_two_pin_net( Net* , int );
     void construct_two_pin_net_with_expansion(Net*, int);
     void construct_total_two_pin_net(bool);
+
     void Add_demand( Bend* , double );
     void Add_demand_H(int,int,int,int,double);
     void Add_demand_V(int,int,int,int,double);
@@ -106,8 +123,7 @@ public:
     void Exclude_demand( Bend* , double );
     void Exclude_demand_H(int,int,int,int,double);
     void Exclude_demand_V(int,int,int,int,double);
-    void projection_to_2D();
-    void supply_from_grid_to_edge();
+    
     
     void compute_total_net_length();
     void compute_one_net_length(int);
@@ -124,7 +140,6 @@ public:
     void layer_assignment_of_pin(int);
     void layer_assignment_layer_range(int);
     void z_dirertion_layer_assignment(branch*,branch*);
-    void update_cost_map();
     
     
     // main function
@@ -140,13 +155,15 @@ public:
 
     //check function
     bool check_demand();
+    int  check_demand_2D();
     
 private:
+    double H_factor, K_factor, S_factor;
     Placement * _placement;
     vector<two_pin_net*> twopin_netlist_L;
     vector<two_pin_net*> twopin_netlist_Z;
-    Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map;            //congestion of row
-    Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map;            //congestion of column
+    Congestion_Row* supply_row_map,*demand_row_map,*cost_row_map, *v_supply_row_map;            //congestion of row
+    Congestion_Col* supply_col_map,*demand_col_map,*cost_col_map, *v_supply_col_map;            //congestion of column
     Congestion* supply_grid_map, * supply_grid_2Dmap;       //supply of total grid
     Congestion* demand_grid_map, * demand_grid_2Dmap;       //demand of total grid
     Two_Dimension_map< pair<int,int>>   layer_range;        //the layer range of total 2D grid of one net

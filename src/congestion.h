@@ -119,13 +119,14 @@ private:
 class Congestion_Row {
 public:
     Congestion_Row() {}
-    Congestion_Row(size_t x , size_t y , size_t z)
+    Congestion_Row(size_t x , size_t y , size_t z, double default_supply = 0)
     :Col(x-1),Row(y), Layer(z){
         // cong_map.resize( x * (y-1) * z );
         // vectorM
-        cong_map_3D = vector<vector<vector<double>>> ( x-1 , vector<vector<double>>(y , vector<double>(z,1)) );
+        cong_map_3D = vector<vector<vector<double>>> ( x-1 , vector<vector<double>>(y , vector<double>(z,default_supply)) );
     }
-
+    int get_row() const { return Row;}
+    int get_col() const { return Col;}
     double& operator() (size_t x , size_t y, size_t z ){
         // return cong_map.at(x*Col + y + z * Row * Col );
         return cong_map_3D[x][y][z];
@@ -162,7 +163,7 @@ public:
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
                     // cong_map_3D[j][k][i] = 1;
                     z++;
-                    cout<<setw(5)<<cong_map_3D[k][j][i];
+                    cout<<setw(15)<<cong_map_3D[k][j][i];
                 }
                 cout<<endl;
             }
@@ -184,11 +185,14 @@ private:
 class Congestion_Col{
 public:
     Congestion_Col() {}
-    Congestion_Col(size_t x , size_t y , size_t z)
+    Congestion_Col(size_t x , size_t y , size_t z, double default_supply = 0)
     :Col(x), Row(y-1), Layer(z){
         // cong_map.resize( (x-1) * y * z );
-        cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y-1 , vector<double>(z,1)) );
-    }
+        cong_map_3D = vector<vector<vector<double>>> ( x , vector<vector<double>>(y-1 , vector<double>(z,default_supply)) );
+    }    
+    int get_row() const { return Row;}
+    int get_col() const { return Col;}
+
 
     double& operator() (size_t x , size_t y, size_t z ){
         // return cong_map.at(x*Col + y + z * Row * Col );
@@ -230,7 +234,7 @@ public:
                     // cout<<setw(5)<<cong_map.at( i * Row * Col + j * Col + k);
                     // cong_map_3D[j][k][i] = z;
                     z++;
-                    cout<<setw(5)<<cong_map_3D[k][j][i];
+                    cout<<setw(15)<<cong_map_3D[k][j][i];
                 }
                 cout<<endl;
             }

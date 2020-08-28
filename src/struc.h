@@ -23,6 +23,8 @@ enum Via_Direction :int{
     End_point,
 };
 
+class SubTree;
+
 class Layer
 {
     // friend class Router;
@@ -118,7 +120,7 @@ public:
 class branch{
 public:
     branch() {}
-    branch(int x, int y, int z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n),dist_to_pin(INT_MAX){}
+    branch(int x, int y, int z ,int id= 0, int n = 0):_x(x),_y(y),_z(z),_id(id),_n(n),dist_to_pin(INT_MAX),tree(NULL){}
     int _x;     //row index 
     int _y;     //column index
     int _z;     //layer index
@@ -127,6 +129,7 @@ public:
     int dist_to_pin;    //distance to the nearest pin (segment number)
     bool operator == (branch a) {return (_x == a._x && _y == a._y); }
     friend ostream& operator<<(ostream& os, const branch& a){ os<< "("<< a._x <<","<<a._y<<","<<a._z<<")   index: "<<a._id<<" neighbor: "<<a._n <<" distance "<<a.dist_to_pin; return os;}
+    SubTree* tree;
 };
 
 // template<class data>
@@ -152,18 +155,18 @@ public:
     int length(){
         Bend* temp = source ; 
         Bend* n_bend = source->get_next();
-        int l = 0;
+        int l = 1;
         while(n_bend != NULL){
             int last_x = temp->_x;
             int last_y = temp->_y;
             int cur_x = n_bend->_x;
             int cur_y = n_bend->_y;
             if(cur_x == last_x){
-                int cur_length = (cur_y - last_y);
+                int cur_length = (cur_y - last_y) - 1;
                 l += abs(cur_length);
             }
             else{
-                int cur_length = (cur_x - last_x);
+                int cur_length = (cur_x - last_x) - 1;
                 l += abs(cur_length);    
             }
             temp = n_bend;
@@ -180,9 +183,9 @@ public:
         }
         cout<<"end"<<endl;
     }
-private:
     branch* b_source;
     branch* b_target;
+private:
     Bend* source; //starting point
     int segment_len;
 
@@ -247,11 +250,19 @@ public:
 
 class Segment{
 public: 
-    Segment( Bend* s, Bend* t) :source(s),target(t) { assert((*(s)!=*(t))); if(*(s)==*(t)) {s->print() ; t->print(); exit(-1);}}
+    Segment() {}
+    Segment( Bend* s, Bend* t) :source(s),target(t) { cout<<"New segment"<<endl;assert((*(s)!=*(t))); if(*(s)==*(t)) {s->print() ; t->print(); exit(-1);}}
     Bend* source;
     Bend* target;
     int distance;
     void print() {source->print();target->print();}
+};
+
+class SubTree{
+public:
+    SubTree() {}
+    ~SubTree() {}
+    vector<two_pin_net*> netlist;
 };
 
 template <typename T>
